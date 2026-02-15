@@ -17,13 +17,11 @@ const M_TO_FT = 3.28084;
 
 /**
  * Build a dedup key for a flight.
- * Bucket altitude to the nearest 100 ft so small fluctuations
- * don't create separate keys for the same fly-over.
+ * Keyed on callsign only — once an aircraft breaches, it is not
+ * recorded again (within the duplicate-prevention window).
  */
-const buildDedupKey = (callsign, altitudeFeet) => {
-  const cs = (callsign || 'UNKNOWN').trim().toUpperCase();
-  const bucket = Math.round((altitudeFeet || 0) / 100) * 100;
-  return `${cs}-${bucket}`;
+const buildDedupKey = (callsign) => {
+  return (callsign || 'UNKNOWN').trim().toUpperCase();
 };
 
 /**
@@ -107,7 +105,7 @@ export default function useBreachDetection(isActive) {
         // --- This flight is a breach candidate ---
 
         // Duplicate prevention.
-        const dedupKey = buildDedupKey(flight.callsign, altFeet);
+        const dedupKey = buildDedupKey(flight.callsign);
         try {
           const last = await getLastBreachForKey(dedupKey);
           if (last && (now - last.lastRecordedAt) < DUPLICATE_PREVENTION_WINDOW) {

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useFlightStore } from '../store/flightStore';
 import { useConfigStore } from '../store/configStore';
-import { fetchFlightsInBoundary } from '../services/api/openskyClient';
+import { fetchFlightsInBoundary } from '../services/api/flightClient';
 import { POLLING_INTERVAL, ACTIVE_POLLING_INTERVAL } from '../utils/constants';
 
 /**
- * Core polling hook. Fetches flights from OpenSky at regular intervals
+ * Core polling hook. Fetches flights from ADSB.fi at regular intervals
  * when isActive is true, and stops when false.
  *
  * Implements adaptive polling:

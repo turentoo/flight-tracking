@@ -2,9 +2,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 32px;
-  background-color: var(--bg-card);
-  border-bottom: 1px solid var(--border-color);
+  padding: 20px 28px;
+  background-color: var(--bg-primary);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
 }
 
 .topbar-breadcrumb {

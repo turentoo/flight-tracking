@@ -1,6 +1,6 @@
 # Flight Tracking
 
-React application for monitoring low-altitude aircraft over Radlett, UK. Polls OpenSky Network API, detects altitude breaches (<1300ft AGL), and provides dashboard views.
+React application for monitoring low-altitude aircraft over Radlett, UK. Polls ADSB.fi API (free, community-run ADS-B aggregator), detects altitude breaches (<1300ft AGL), and provides dashboard views.
 
 ## Tech Stack
 
@@ -68,7 +68,7 @@ src/
 │   └── useBreachHistory.js          — Historical data loading from Supabase
 ├── services/
 │   ├── api/
-│   │   ├── openskyClient.js        — OpenSky Network API client (with optional auth)
+│   │   ├── flightClient.js          — ADSB.fi API client (no auth required)
 │   │   └── ourAirportsClient.js    — OurAirports CSV data client (airport elevation)
 │   ├── storage/
 │   │   ├── db.js                   — Supabase client initialization
@@ -92,17 +92,21 @@ src/
 
 The app uses a **sidebar navigation layout** matching the Figma design:
 
-- **Left sidebar** (220px): "Flight Tracking" logo, "Dashboards > Overview" and "Pages > Breach history" nav items
+- **Left sidebar** (212px): "Flight Tracking" logo, "Dashboards > Overview" and "Pages > Breach history" nav items
 - **Top bar**: Breadcrumb (e.g. "Dashboards / Overview") + settings gear icon
 - **Main content**: Scrollable area with light gray background
 
 ### Overview Page (default)
+Two-column layout at top: main content (left) + Alert explorer (right, 280px sticky with left border).
+
 1. Current hour bar chart (5-min intervals) with breach count legend
-2. Breaches table (Flight number, Airport, Altitude, Timestamp)
-3. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
-4. Monthly bar chart (last 6 months)
-5. Month/year selector dropdowns
-6. Breaches-by-month table grouped by date headers
+2. **Editable boundary mini map** — `L.Rectangle` with 8 draggable handles (4 corners + 4 edge midpoints) built with native Leaflet API (no leaflet-draw). Handles resize the rectangle on drag; boundary persists to Supabase via `configStore.setBoundary()` with 500ms debounce. Map has zoom/pan enabled. Pencil button opens ConfigPanel for manual coordinate entry. The `EditableBoundary` component lives inside `OverviewPage.jsx`; the main `FlightMap` uses a separate read-only `BoundaryOverlay`.
+3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background. Clicking again deselects.
+4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected.
+5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
+6. Monthly bar chart (last 6 months)
+7. Month/year selector dropdowns
+8. Breaches-by-month table grouped by date headers
 
 ### Breach History Page
 - Calendar grid with breach count badges
@@ -115,8 +119,7 @@ All tables and charts have **graceful empty states** when no data is present.
 Environment variables in `.env.local`:
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — Supabase publishable (anon) key
-- `VITE_OPENSKY_API_URL` — OpenSky API base URL
-- `VITE_OPENSKY_USERNAME` / `VITE_OPENSKY_PASSWORD` — Optional auth credentials
+- `VITE_ADSB_FI_API_URL` — ADSB.fi API base URL (default: `https://opendata.adsb.fi/api`)
 - `VITE_POLLING_INTERVAL` — Normal polling interval (60000ms)
 - `VITE_ACTIVE_POLLING_INTERVAL` — Active polling interval (20000ms)
 - `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet AGL (1300)
@@ -148,11 +151,18 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - **Duplicate prevention:** Same callsign+altitude combo not re-recorded within 60s.
 - **Operating hours:** 9am–7pm local time. Polling stops outside this window.
 
-## Theme
+## Theme & Design System
 
-- **Light theme by default** (white cards on `#f0f2f5` background)
+- **Inter font** (loaded from Google Fonts: 400, 500, 600, 700 weights)
+- **Light theme by default** (`#F9F9FA` cards on `#f0f2f5` background)
 - Dark mode via `prefers-color-scheme: dark` media query
-- CSS variables: `--bg-primary`, `--bg-card`, `--bg-secondary`, `--text-primary`, `--accent`, `--chart-1` through `--chart-4`, `--stat-blue/teal/dark/purple`
+- **Colors**: `--text-primary: #000000`, `--text-secondary: rgba(0,0,0,0.4)`, `--border-color: rgba(0,0,0,0.1)`
+- **Border radius**: 20px for cards/stat cards, 12px for nav items/badges, 8px for icon backgrounds
+- **Stat cards**: Flat colored backgrounds alternating `rgba(125,187,255,0.2)` (blue) and `rgba(184,153,235,0.2)` (purple), no left border
+- **Chart palette**: `--chart-1: #6BE6D3` (teal), `--chart-2: #000000` (black), `--chart-3: #7DBBFF` (blue), `--chart-4: #B899EB` (purple), `--chart-5: #71DD8C` (green), `--chart-6: #A0BCE8` (light blue)
+- **Tables**: 12px font, first data row highlighted with blue tint `rgba(125,187,255,0.2)`
+- **Font sizes**: 12px (tables, labels), 14px (section headers, nav items, stat labels), 24px (stat values)
+- CSS variables: `--bg-primary`, `--bg-card`, `--bg-secondary`, `--text-primary`, `--accent`, `--chart-1` through `--chart-6`, `--stat-card-blue/purple`
 
 ## Conventions
 
@@ -164,3 +174,7 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - Services organized by concern: `api/`, `storage/`, `calculations/`
 - Pages in `src/components/pages/`, layout in `src/components/layout/`
 - Reusable shared components in `src/components/shared/`
+
+## Design
+
+Figma designs are in `screenshots/` as PNGs. A Figma MCP server is configured (via `claude mcp add`) for reading designs directly from Figma — do not hardcode or commit the Figma API token.

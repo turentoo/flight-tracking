@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useFlightStore } from '../../store/flightStore';
 import { useBreachStore } from '../../store/breachStore';
-import { isAuthenticated } from '../../services/api/openskyClient';
 import useTimeWindow from '../../hooks/useTimeWindow';
 import { formatTime } from '../../utils/timeHelpers';
 import './StatusBar.css';
@@ -28,7 +27,7 @@ export default function StatusBar() {
           {isActive ? (
             <>
               <span className="status-label">
-                Monitoring{isAuthenticated ? ' (authenticated)' : ''}
+                Monitoring
               </span>
               <span className="status-detail">
                 {isLoading

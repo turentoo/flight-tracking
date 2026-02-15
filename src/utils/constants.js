@@ -3,13 +3,11 @@ export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // API Configuration
-export const OPENSKY_API_URL = import.meta.env.VITE_OPENSKY_API_URL;
-export const OPENSKY_USERNAME = import.meta.env.VITE_OPENSKY_USERNAME || '';
-export const OPENSKY_PASSWORD = import.meta.env.VITE_OPENSKY_PASSWORD || '';
+export const ADSB_FI_API_URL = import.meta.env.VITE_ADSB_FI_API_URL || 'https://opendata.adsb.fi/api';
 export const OURAIRPORTS_API_URL = import.meta.env.VITE_OURAIRPORTS_API_URL;
 
 // Polling Configuration
-export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '60000', 10);
+export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '20000', 10);
 export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '20000', 10);
 
 // Altitude & Breach Configuration
@@ -30,8 +28,8 @@ export const DEFAULT_BOUNDARY = {
 // Radlett Aerodrome ICAO code (for elevation lookup)
 export const REFERENCE_AIRPORT_ICAO = 'EGTR';
 
-// Duplicate prevention window (ms)
-export const DUPLICATE_PREVENTION_WINDOW = 60000;
+// Duplicate prevention window (ms) — 24 hours, so a callsign is recorded at most once per day
+export const DUPLICATE_PREVENTION_WINDOW = 86400000;
 
 // Date format for storage
 export const DATE_FORMAT = 'yyyy-MM-dd';

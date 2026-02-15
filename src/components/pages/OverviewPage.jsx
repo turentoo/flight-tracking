@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
@@ -154,6 +154,19 @@ function EditableBoundary({ boundary, onBoundaryChange }) {
   return null;
 }
 
+function FitBoundary({ boundary, padding }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!boundary) return;
+    const bounds = L.latLngBounds(
+      [boundary.latMin, boundary.lonMin],
+      [boundary.latMax, boundary.lonMax]
+    );
+    map.fitBounds(bounds, { padding: padding || [20, 20] });
+  }, [map, boundary, padding]);
+  return null;
+}
+
 function BoundaryMiniMap() {
   const boundary = useConfigStore((s) => s.boundary);
   const setShowConfigPanel = useUIStore((s) => s.setShowConfigPanel);
@@ -173,7 +186,7 @@ function BoundaryMiniMap() {
       </button>
       <MapContainer
         center={[center.latitude, center.longitude]}
-        zoom={12}
+        zoom={13}
         zoomControl={true}
         attributionControl={false}
         dragging={true}
@@ -183,8 +196,127 @@ function BoundaryMiniMap() {
         style={{ width: '100%', height: '100%' }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <FitBoundary boundary={boundary} padding={[30, 30]} />
         <EditableBoundary boundary={boundary} onBoundaryChange={handleBoundaryChange} />
       </MapContainer>
+    </div>
+  );
+}
+
+function AlertMapFit({ lat, lng, boundary }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat == null || lng == null) return;
+    if (boundary) {
+      const bounds = L.latLngBounds(
+        [boundary.latMin, boundary.lonMin],
+        [boundary.latMax, boundary.lonMax]
+      );
+      bounds.extend([lat, lng]);
+      map.fitBounds(bounds, { padding: [15, 15] });
+    } else {
+      map.setView([lat, lng], 14);
+    }
+  }, [map, lat, lng, boundary]);
+  return null;
+}
+
+function AlertExplorer({ breach, boundary }) {
+  if (!breach) {
+    return (
+      <div className="alert-explorer">
+        <h3 className="alert-explorer-title">Alert explorer</h3>
+        <EmptyState title="Select alert to view details" description="Click a row in the breaches table" />
+      </div>
+    );
+  }
+
+  const hasCoords = breach.latitude != null && breach.longitude != null;
+
+  return (
+    <div className="alert-explorer">
+      <h3 className="alert-explorer-title">Alert explorer</h3>
+      <div className="alert-explorer-details">
+        <div className="alert-detail-row">
+          <span className="alert-detail-icon">
+            <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+            </svg>
+          </span>
+          <div>
+            <div className="alert-detail-value">{formatCallsign(breach.callsign)}</div>
+            <div className="alert-detail-label">Flight</div>
+          </div>
+        </div>
+        <div className="alert-detail-row">
+          <span className="alert-detail-icon">
+            <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </span>
+          <div>
+            <div className="alert-detail-value">{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</div>
+            <div className="alert-detail-label">Airport</div>
+          </div>
+        </div>
+        <div className="alert-detail-row">
+          <span className="alert-detail-icon">
+            <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </span>
+          <div>
+            <div className="alert-detail-value">{format(new Date(breach.timestamp), 'd MMM yyyy HH:mm:ss')}</div>
+            <div className="alert-detail-label">When</div>
+          </div>
+        </div>
+        {hasCoords && (
+          <div className="alert-detail-row">
+            <span className="alert-detail-icon">
+              <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </span>
+            <div>
+              <div className="alert-detail-value">{breach.longitude.toFixed(6)},{breach.latitude.toFixed(6)}</div>
+              <div className="alert-detail-label">Where</div>
+            </div>
+          </div>
+        )}
+      </div>
+      {hasCoords && (
+        <div className="alert-explorer-map">
+          <MapContainer
+            center={[breach.latitude, breach.longitude]}
+            zoom={14}
+            zoomControl={false}
+            attributionControl={false}
+            dragging={false}
+            scrollWheelZoom={false}
+            doubleClickZoom={false}
+            touchZoom={false}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <Marker position={[breach.latitude, breach.longitude]} />
+            <AlertMapFit lat={breach.latitude} lng={breach.longitude} boundary={boundary} />
+          </MapContainer>
+        </div>
+      )}
+      <div className="alert-detail-row alert-detail-altitude">
+        <span className="alert-detail-icon">
+          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </span>
+        <div>
+          <div className="alert-detail-value">{breach.altitude != null ? `${Math.round(breach.altitude).toLocaleString()} ft` : 'N/A'}</div>
+          <div className="alert-detail-label">Altitude</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -246,7 +378,7 @@ function CurrentHourChart({ breaches }) {
   );
 }
 
-function BreachesTable({ breaches, title }) {
+function BreachesTable({ breaches, title, selectedId, onSelect }) {
   if (breaches.length === 0) {
     return (
       <div className="card breaches-table-card">
@@ -271,7 +403,11 @@ function BreachesTable({ breaches, title }) {
         </thead>
         <tbody>
           {breaches.map((b) => (
-            <tr key={b.id}>
+            <tr
+              key={b.id}
+              className={`breach-row${selectedId === b.id ? ' breach-row-selected' : ''}`}
+              onClick={() => onSelect && onSelect(b)}
+            >
               <td>{formatCallsign(b.callsign)}</td>
               <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
               <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
@@ -287,16 +423,16 @@ function BreachesTable({ breaches, title }) {
 
 function StatCards({ stats }) {
   const cards = [
-    { label: 'Avg per month', value: stats.avg, color: 'var(--stat-blue)' },
-    { label: 'Max per month', value: stats.max, color: 'var(--stat-teal)' },
-    { label: 'Total breaches', value: stats.total, color: 'var(--stat-dark)' },
-    { label: 'Min per month', value: stats.min, color: 'var(--stat-purple)' },
+    { label: 'Avg per month', value: stats.avg, className: 'stat-card-blue' },
+    { label: 'Max per month', value: stats.max, className: 'stat-card-purple' },
+    { label: 'Total breaches', value: stats.total, className: 'stat-card-blue' },
+    { label: 'Min per month', value: stats.min, className: 'stat-card-purple' },
   ];
 
   return (
     <div className="stat-cards">
       {cards.map((c) => (
-        <div key={c.label} className="stat-card" style={{ borderLeftColor: c.color }}>
+        <div key={c.label} className={`stat-card ${c.className}`}>
           <span className="stat-card-label">{c.label}</span>
           <span className="stat-card-value">{c.value.toLocaleString()}</span>
         </div>
@@ -307,7 +443,7 @@ function StatCards({ stats }) {
 
 function MonthlyChart({ months }) {
   const hasData = months.some((m) => m.count > 0);
-  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-1)', 'var(--chart-2)'];
+  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 
   // Build chart data with individual bar per month for colored bars
   const chartData = months.map((m, i) => ({
@@ -332,7 +468,7 @@ function MonthlyChart({ months }) {
           <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12 }} />
-          <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
             {chartData.map((entry, index) => (
               <rect key={index} fill={entry.fill} />
             ))}
@@ -343,7 +479,7 @@ function MonthlyChart({ months }) {
   );
 }
 
-function MonthlyBreachesTable({ year, month }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -404,7 +540,11 @@ function MonthlyBreachesTable({ year, month }) {
                 <td colSpan={5}>{dateLabel}</td>
               </tr>,
               ...grouped[date].map((b) => (
-                <tr key={b.id}>
+                <tr
+                  key={b.id}
+                  className={`breach-row${selectedId === b.id ? ' breach-row-selected' : ''}`}
+                  onClick={() => onSelect && onSelect(b)}
+                >
                   <td>{formatCallsign(b.callsign)}</td>
                   <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
                   <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
@@ -422,7 +562,9 @@ function MonthlyBreachesTable({ year, month }) {
 
 export default function OverviewPage() {
   const currentHourBreaches = useBreachStore((s) => s.currentHourBreaches);
+  const boundary = useConfigStore((s) => s.boundary);
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
+  const [selectedBreach, setSelectedBreach] = useState(null);
 
   // Month/year selector state
   const now = new Date();
@@ -448,39 +590,53 @@ export default function OverviewPage() {
 
   return (
     <div className="overview-page">
-      <CurrentHourChart breaches={sorted} />
-      <BreachesTable breaches={sorted} />
+      <div className="overview-layout">
+        <div className="overview-main">
+          <CurrentHourChart breaches={sorted} />
+          <BreachesTable
+            breaches={sorted}
+            selectedId={selectedBreach?.id}
+            onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
+          />
 
-      <h2 className="section-heading past-heading">Past breaches</h2>
+          <h2 className="section-heading past-heading">Past breaches</h2>
 
-      <div className="card past-breaches-card">
-        <h3 className="card-title">6 months overview</h3>
-        <StatCards stats={monthlyStats} />
-        <MonthlyChart months={monthlyStats.months} />
+          <div className="card past-breaches-card">
+            <h3 className="card-title">6 months overview</h3>
+            <StatCards stats={monthlyStats} />
+            <MonthlyChart months={monthlyStats.months} />
+          </div>
+
+          <div className="month-selector">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="month-select"
+            >
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="year-select"
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+
+          <MonthlyBreachesTable
+            year={selectedYear}
+            month={selectedMonth}
+            selectedId={selectedBreach?.id}
+            onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
+          />
+        </div>
+        <AlertExplorer breach={selectedBreach} boundary={boundary} />
       </div>
-
-      <div className="month-selector">
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(Number(e.target.value))}
-          className="month-select"
-        >
-          {monthOptions.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="year-select"
-        >
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-
-      <MonthlyBreachesTable year={selectedYear} month={selectedMonth} />
     </div>
   );
 }
