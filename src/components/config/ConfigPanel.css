@@ -1,207 +1,179 @@
 .config-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 24px;
-  max-width: 500px;
+  background: var(--bg-secondary, #F9F9FA);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 560px;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
 }
 
+/* Header: title + close button */
 .config-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .config-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   padding: 0;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
 }
 
-.close-btn:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+/* Body: grouped sections */
+.config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.config-section {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.config-section:last-of-type {
-  border-bottom: none;
-}
-
-.config-section h3 {
-  margin: 0 0 8px 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.section-description {
-  margin: 0 0 16px 0;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 0.875rem;
+.config-group-label {
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-primary);
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.form-group input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background-color: var(--bg-tertiary);
-}
-
-.form-group small {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-}
-
-.form-row {
+.config-group-fields--grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
-.form-row .form-group {
-  margin-bottom: 0;
-}
-
-.config-section.info {
-  background-color: var(--bg-tertiary);
-  padding: 12px;
-  border-radius: 4px;
-  border: 1px solid var(--accent);
-}
-
-.config-section.info h3 {
-  color: var(--accent);
-}
-
-.config-section.info p {
-  margin: 4px 0;
-  font-size: 0.9rem;
-}
-
-.config-actions {
+.config-group-fields--row {
   display: flex;
   gap: 12px;
-  margin-top: 24px;
-  justify-content: flex-end;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
+.config-group-fields--row .config-input {
+  flex: 1;
 }
 
-.btn-primary {
-  background-color: var(--accent);
-  color: white;
+/* Input boxes */
+.config-input {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
 }
 
-.btn-primary:hover {
-  background-color: var(--accent-hover);
+.config-input--full {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
 }
 
-.btn-secondary {
-  background-color: transparent;
+.config-input-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(28, 28, 28, 0.4);
+}
+
+.config-input input {
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  width: 100%;
+  font-family: inherit;
 }
 
-.btn-secondary:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--accent);
+.config-input--full input {
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: transparent;
+  width: 100%;
+  font-family: inherit;
 }
 
-.data-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
+/* Hide number input spinners */
+.config-input input[type="number"]::-webkit-outer-spin-button,
+.config-input input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-.btn-danger {
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.9rem;
+.config-input input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Save button */
+.config-save-btn {
+  width: 100%;
+  padding: 4px 8px;
+  background-color: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
-  background-color: transparent;
-  color: var(--error);
-  border: 1px solid var(--error);
+  text-align: center;
+  height: 36px;
+  transition: opacity 0.15s;
 }
 
-.btn-danger:hover {
-  background-color: rgba(255, 107, 107, 0.1);
+.config-save-btn:hover {
+  opacity: 0.85;
+  color: #fff;
+  background-color: var(--text-primary);
 }
 
-.btn-danger.confirm {
-  background-color: var(--error);
-  color: white;
-}
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .config-input,
+  .config-input--full {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+  }
 
-.btn-danger.confirm:hover {
-  background-color: #e53e3e;
-}
+  .config-input-label {
+    color: var(--text-secondary);
+  }
 
-.export-status {
-  margin: 8px 0 0 0;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
+  .config-save-btn {
+    background-color: var(--text-primary);
+  }
 }

@@ -25,6 +25,7 @@ export const useConfigStore = create((set) => ({
   activeHoursStart: ACTIVE_HOURS_START,
   activeHoursEnd: ACTIVE_HOURS_END,
   reportEmail: DEFAULT_REPORT_EMAIL,
+  airportFilter: '',
   airportElevation: null,
   isLoading: false,
   error: null,
@@ -38,6 +39,7 @@ export const useConfigStore = create((set) => ({
       const activeHoursEnd = await getConfigValue('activeHoursEnd');
       const airportElevation = await getConfigValue('airportElevation');
       const reportEmail = await getConfigValue('reportEmail');
+      const airportFilter = await getConfigValue('airportFilter');
 
       set({
         boundary: boundary || DEFAULT_BOUNDARY,
@@ -45,6 +47,7 @@ export const useConfigStore = create((set) => ({
         activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
         activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
         reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
+        airportFilter: airportFilter || '',
         airportElevation: airportElevation || null,
         isLoading: false,
         error: null,
@@ -77,6 +80,15 @@ export const useConfigStore = create((set) => ({
       await setConfigValue('activeHoursStart', start);
       await setConfigValue('activeHoursEnd', end);
       set({ activeHoursStart: start, activeHoursEnd: end, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  setAirportFilter: async (filter) => {
+    try {
+      await setConfigValue('airportFilter', filter);
+      set({ airportFilter: filter, error: null });
     } catch (error) {
       set({ error: error.message });
     }

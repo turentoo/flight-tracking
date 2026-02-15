@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../store/configStore';
 import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END, DEFAULT_REPORT_EMAIL } from '../../utils/constants';
-import { exportBreachesCsv } from '../../utils/exportCsv';
-import { deleteAllBreaches } from '../../services/storage/breachRepository';
-import { useBreachStore } from '../../store/breachStore';
 import './ConfigPanel.css';
 
 export default function ConfigPanel({ onClose }) {
@@ -12,29 +9,26 @@ export default function ConfigPanel({ onClose }) {
     altitudeThreshold,
     activeHoursStart,
     activeHoursEnd,
-    airportElevation,
+    reportEmail,
+    airportFilter,
     setBoundary,
     setAltitudeThreshold,
     setActiveHours,
-    reportEmail,
     setReportEmail,
+    setAirportFilter,
   } = useConfigStore();
-
-  const { setBreaches, setCurrentHourBreaches } = useBreachStore();
 
   const [formData, setFormData] = useState({
     latMin: String(boundary?.latMin ?? DEFAULT_BOUNDARY.latMin),
     latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
     lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
     lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
-    altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
-    activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
-    activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+    altitudeThreshold: String(altitudeThreshold || ALTITUDE_THRESHOLD),
+    activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
+    activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
     reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
+    airportFilter: airportFilter || '',
   });
-
-  const [exportStatus, setExportStatus] = useState(null);
-  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     setFormData({
@@ -42,22 +36,17 @@ export default function ConfigPanel({ onClose }) {
       latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
       lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
       lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
-      altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
-      activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
-      activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+      altitudeThreshold: String(altitudeThreshold || ALTITUDE_THRESHOLD),
+      activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
+      activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
       reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
+      airportFilter: airportFilter || '',
     });
-  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail]);
-
-  const isCoordField = (name) => ['latMin', 'latMax', 'lonMin', 'lonMax'].includes(name);
-  const isTextField = (name) => name === 'reportEmail';
+  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: isCoordField(name) || isTextField(name) ? value : parseInt(value, 10),
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -69,54 +58,13 @@ export default function ConfigPanel({ onClose }) {
         lonMax: parseFloat(formData.lonMax),
       };
       await setBoundary(newBoundary);
-      await setAltitudeThreshold(formData.altitudeThreshold);
-      await setActiveHours(formData.activeHoursStart, formData.activeHoursEnd);
+      await setAltitudeThreshold(parseInt(formData.altitudeThreshold, 10));
+      await setActiveHours(parseInt(formData.activeHoursStart, 10), parseInt(formData.activeHoursEnd, 10));
       await setReportEmail(formData.reportEmail);
+      await setAirportFilter(formData.airportFilter);
       onClose();
     } catch (error) {
       console.error('Error saving configuration:', error);
-    }
-  };
-
-  const handleReset = () => {
-    setFormData({
-      latMin: String(DEFAULT_BOUNDARY.latMin),
-      latMax: String(DEFAULT_BOUNDARY.latMax),
-      lonMin: String(DEFAULT_BOUNDARY.lonMin),
-      lonMax: String(DEFAULT_BOUNDARY.lonMax),
-      altitudeThreshold: ALTITUDE_THRESHOLD,
-      activeHoursStart: ACTIVE_HOURS_START,
-      activeHoursEnd: ACTIVE_HOURS_END,
-      reportEmail: DEFAULT_REPORT_EMAIL,
-    });
-  };
-
-  const handleExport = async () => {
-    try {
-      setExportStatus('exporting');
-      const count = await exportBreachesCsv();
-      setExportStatus(`Exported ${count} records`);
-      setTimeout(() => setExportStatus(null), 3000);
-    } catch (err) {
-      setExportStatus(err.message);
-      setTimeout(() => setExportStatus(null), 3000);
-    }
-  };
-
-  const handleClearData = async () => {
-    if (!confirmClear) {
-      setConfirmClear(true);
-      return;
-    }
-    try {
-      await deleteAllBreaches();
-      setBreaches([]);
-      setCurrentHourBreaches([]);
-      setConfirmClear(false);
-      setExportStatus('All breach data cleared');
-      setTimeout(() => setExportStatus(null), 3000);
-    } catch (err) {
-      console.error('Error clearing data:', err);
     }
   };
 
@@ -124,109 +72,74 @@ export default function ConfigPanel({ onClose }) {
     <div className="config-panel">
       <div className="config-header">
         <h2>Configuration</h2>
-        <button className="close-btn" onClick={onClose} aria-label="Close">✕</button>
-      </div>
-
-      <div className="config-section">
-        <h3>Monitoring Boundary</h3>
-        <p className="section-description">Define the rectangular area over Radlett to monitor</p>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="cfg-latMin">Latitude Min</label>
-            <input id="cfg-latMin" type="number" name="latMin" value={formData.latMin} onChange={handleChange} step="0.001" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="cfg-latMax">Latitude Max</label>
-            <input id="cfg-latMax" type="number" name="latMax" value={formData.latMax} onChange={handleChange} step="0.001" />
-          </div>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="cfg-lonMin">Longitude Min</label>
-            <input id="cfg-lonMin" type="number" name="lonMin" value={formData.lonMin} onChange={handleChange} step="0.001" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="cfg-lonMax">Longitude Max</label>
-            <input id="cfg-lonMax" type="number" name="lonMax" value={formData.lonMax} onChange={handleChange} step="0.001" />
-          </div>
-        </div>
-      </div>
-
-      <div className="config-section">
-        <h3>Breach Detection</h3>
-        <p className="section-description">Settings for low-altitude flight detection</p>
-
-        <div className="form-group">
-          <label htmlFor="cfg-threshold">Altitude Threshold (AGL feet)</label>
-          <input id="cfg-threshold" type="number" name="altitudeThreshold" value={formData.altitudeThreshold} onChange={handleChange} min="100" step="100" />
-          <small>Flights below this altitude will be recorded as breaches</small>
-        </div>
-      </div>
-
-      <div className="config-section">
-        <h3>Operating Hours</h3>
-        <p className="section-description">When to poll for flights and record breaches</p>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="cfg-start">Start Hour (24h)</label>
-            <input id="cfg-start" type="number" name="activeHoursStart" value={formData.activeHoursStart} onChange={handleChange} min="0" max="23" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="cfg-end">End Hour (24h)</label>
-            <input id="cfg-end" type="number" name="activeHoursEnd" value={formData.activeHoursEnd} onChange={handleChange} min="0" max="23" />
-          </div>
-        </div>
-      </div>
-
-      <div className="config-section">
-        <h3>Report Email</h3>
-        <p className="section-description">Recipient email address for noise complaint reports</p>
-
-        <div className="form-group">
-          <label htmlFor="cfg-reportEmail">Email Address</label>
-          <input id="cfg-reportEmail" type="email" name="reportEmail" value={formData.reportEmail} onChange={handleChange} />
-        </div>
-      </div>
-
-      {airportElevation && (
-        <div className="config-section info">
-          <h3>Airport Information</h3>
-          <p><strong>Radlett Aerodrome (EGTR)</strong></p>
-          <p>Elevation: {Math.round(airportElevation)} ft AMSL</p>
-        </div>
-      )}
-
-      <div className="config-section">
-        <h3>Data Management</h3>
-        <p className="section-description">Export or clear stored breach records</p>
-
-        <div className="data-actions">
-          <button onClick={handleExport} className="btn-secondary" disabled={exportStatus === 'exporting'}>
-            {exportStatus === 'exporting' ? 'Exporting...' : 'Export CSV'}
-          </button>
-          <button
-            onClick={handleClearData}
-            className={`btn-danger ${confirmClear ? 'confirm' : ''}`}
-          >
-            {confirmClear ? 'Confirm Clear All Data' : 'Clear All Data'}
-          </button>
-        </div>
-        {exportStatus && exportStatus !== 'exporting' && (
-          <p className="export-status">{exportStatus}</p>
-        )}
-      </div>
-
-      <div className="config-actions">
-        <button onClick={handleReset} className="btn-secondary">
-          Reset to Defaults
-        </button>
-        <button onClick={handleSave} className="btn-primary">
-          Save Configuration
+        <button className="close-btn" onClick={onClose} aria-label="Close">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="10" y1="10" x2="22" y2="22" />
+            <line x1="22" y1="10" x2="10" y2="22" />
+          </svg>
         </button>
       </div>
+
+      <div className="config-body">
+        <div className="config-group">
+          <span className="config-group-label">Monitoring boundary</span>
+          <div className="config-group-fields config-group-fields--grid">
+            <div className="config-input">
+              <label className="config-input-label">Latitude min</label>
+              <input type="number" name="latMin" value={formData.latMin} onChange={handleChange} step="0.001" />
+            </div>
+            <div className="config-input">
+              <label className="config-input-label">Latitude max</label>
+              <input type="number" name="latMax" value={formData.latMax} onChange={handleChange} step="0.001" />
+            </div>
+            <div className="config-input">
+              <label className="config-input-label">Longitude min</label>
+              <input type="number" name="lonMin" value={formData.lonMin} onChange={handleChange} step="0.001" />
+            </div>
+            <div className="config-input">
+              <label className="config-input-label">Longitude max</label>
+              <input type="number" name="lonMax" value={formData.lonMax} onChange={handleChange} step="0.001" />
+            </div>
+          </div>
+        </div>
+
+        <div className="config-group">
+          <span className="config-group-label">Flight parameters</span>
+          <div className="config-group-fields config-group-fields--row">
+            <div className="config-input">
+              <label className="config-input-label">Altitude threshold, ft</label>
+              <input type="number" name="altitudeThreshold" value={formData.altitudeThreshold} onChange={handleChange} min="100" step="100" />
+            </div>
+            <div className="config-input">
+              <label className="config-input-label">Airport filter (optional)</label>
+              <input type="text" name="airportFilter" value={formData.airportFilter} onChange={handleChange} placeholder="" />
+            </div>
+          </div>
+        </div>
+
+        <div className="config-group">
+          <span className="config-group-label">Monitoring hours</span>
+          <div className="config-group-fields config-group-fields--row">
+            <div className="config-input">
+              <label className="config-input-label">Start hour (24h)</label>
+              <input type="number" name="activeHoursStart" value={formData.activeHoursStart} onChange={handleChange} min="0" max="23" />
+            </div>
+            <div className="config-input">
+              <label className="config-input-label">End hour (24h)</label>
+              <input type="number" name="activeHoursEnd" value={formData.activeHoursEnd} onChange={handleChange} min="0" max="23" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="config-input config-input--full">
+        <label className="config-input-label">Report email</label>
+        <input type="email" name="reportEmail" value={formData.reportEmail} onChange={handleChange} />
+      </div>
+
+      <button onClick={handleSave} className="config-save-btn">
+        Save configuration
+      </button>
     </div>
   );
 }
