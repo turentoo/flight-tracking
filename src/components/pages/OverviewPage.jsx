@@ -562,7 +562,7 @@ function MonthlyChart({ months }) {
   );
 }
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, egtrOnly }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -579,11 +579,17 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
   }, [year, month]);
 
   const displayBreaches = useMemo(() => {
-    if (!reportedUpdates || Object.keys(reportedUpdates).length === 0) return breaches;
-    return breaches.map((b) =>
-      Object.prototype.hasOwnProperty.call(reportedUpdates, b.id) ? { ...b, reported: reportedUpdates[b.id] } : b
-    );
-  }, [breaches, reportedUpdates]);
+    let result = breaches;
+    if (reportedUpdates && Object.keys(reportedUpdates).length > 0) {
+      result = result.map((b) =>
+        Object.prototype.hasOwnProperty.call(reportedUpdates, b.id) ? { ...b, reported: reportedUpdates[b.id] } : b
+      );
+    }
+    if (egtrOnly) {
+      result = result.filter((b) => b.departure_airport === 'EGTR');
+    }
+    return result;
+  }, [breaches, reportedUpdates, egtrOnly]);
 
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
@@ -658,6 +664,7 @@ export default function OverviewPage() {
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
   const [reportedUpdates, setReportedUpdates] = useState({});
+  const [egtrOnly, setEgtrOnly] = useState(false);
 
   // Month/year selector state
   const now = new Date();
@@ -719,6 +726,17 @@ export default function OverviewPage() {
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
+            <div className="egtr-toggle-container">
+              <label className="report-toggle">
+                <input
+                  type="checkbox"
+                  checked={egtrOnly}
+                  onChange={() => setEgtrOnly((v) => !v)}
+                />
+                <span className="report-toggle-slider" />
+              </label>
+              <span className="report-toggle-label">EGTR</span>
+            </div>
           </div>
 
           <MonthlyBreachesTable
@@ -727,6 +745,7 @@ export default function OverviewPage() {
             selectedId={selectedBreach?.id}
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
             reportedUpdates={reportedUpdates}
+            egtrOnly={egtrOnly}
           />
         </div>
         <AlertExplorer

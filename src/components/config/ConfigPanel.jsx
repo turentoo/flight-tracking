@@ -10,12 +10,10 @@ export default function ConfigPanel({ onClose }) {
     activeHoursStart,
     activeHoursEnd,
     reportEmail,
-    airportFilter,
     setBoundary,
     setAltitudeThreshold,
     setActiveHours,
     setReportEmail,
-    setAirportFilter,
   } = useConfigStore();
 
   const [formData, setFormData] = useState({
@@ -27,7 +25,6 @@ export default function ConfigPanel({ onClose }) {
     activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
     activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
     reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
-    airportFilter: airportFilter || '',
   });
 
   useEffect(() => {
@@ -40,9 +37,8 @@ export default function ConfigPanel({ onClose }) {
       activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
       activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
       reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
-      airportFilter: airportFilter || '',
     });
-  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter]);
+  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,7 +57,6 @@ export default function ConfigPanel({ onClose }) {
       await setAltitudeThreshold(parseInt(formData.altitudeThreshold, 10));
       await setActiveHours(parseInt(formData.activeHoursStart, 10), parseInt(formData.activeHoursEnd, 10));
       await setReportEmail(formData.reportEmail);
-      await setAirportFilter(formData.airportFilter);
       onClose();
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -109,10 +104,6 @@ export default function ConfigPanel({ onClose }) {
             <div className="config-input">
               <label className="config-input-label">Altitude threshold, ft</label>
               <input type="number" name="altitudeThreshold" value={formData.altitudeThreshold} onChange={handleChange} min="100" step="100" />
-            </div>
-            <div className="config-input">
-              <label className="config-input-label">Airport filter (optional)</label>
-              <input type="text" name="airportFilter" value={formData.airportFilter} onChange={handleChange} placeholder="" />
             </div>
           </div>
         </div>

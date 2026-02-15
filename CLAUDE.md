@@ -43,7 +43,7 @@ src/
 │   │   │                            6-month stats, monthly chart, breaches-by-month table
 │   │   └── BreachHistoryPage.jsx/css — Calendar drill-down history page
 │   ├── config/
-│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, airport filter, hours, report email)
+│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, hours, report email)
 │   ├── map/
 │   │   ├── FlightMap.jsx/css      — Interactive Leaflet map with flights and boundary
 │   │   ├── FlightMarker.jsx       — Rotated aircraft icon with popup
@@ -69,10 +69,11 @@ src/
 ├── services/
 │   ├── api/
 │   │   ├── flightClient.js          — ADSB.fi API client (no auth required)
+│   │   ├── flightAwareClient.js     — FlightAware AeroAPI client (departure airport lookup)
 │   │   └── ourAirportsClient.js    — OurAirports CSV data client (airport elevation)
 │   ├── storage/
 │   │   ├── db.js                   — Supabase client initialization
-│   │   └── breachRepository.js     — Breach CRUD via Supabase (queries by date/hour/month, monthly stats)
+│   │   └── breachRepository.js     — Breach CRUD via Supabase (queries by date/hour/month/recent 60min, monthly stats)
 │   └── calculations/
 │       ├── aglCalculator.js        — AGL calculation and breach threshold check
 │       └── boundaryChecker.js      — Point-in-rectangle check, Haversine distance
@@ -99,13 +100,13 @@ The app uses a **sidebar navigation layout** matching the Figma design:
 ### Overview Page (default)
 Two-column layout at top: main content (left) + Alert explorer (right, 280px sticky with left border).
 
-1. Current hour bar chart (5-min intervals) with breach count legend
+1. **Past 60 minutes** bar chart (12 bars at 5-min intervals, snapped to clean :00/:05/:10 boundaries) with breach count legend. Data loaded via `getRecentBreaches()` which queries `timestamp >= now - 60min` from Supabase.
 2. **Editable boundary mini map** — `L.Rectangle` with 8 draggable handles (4 corners + 4 edge midpoints) built with native Leaflet API (no leaflet-draw). Handles resize the rectangle on drag; boundary persists to Supabase via `configStore.setBoundary()` with 500ms debounce. Map has zoom/pan enabled. Pencil button opens ConfigPanel for manual coordinate entry. The `EditableBoundary` component lives inside `OverviewPage.jsx`; the main `FlightMap` uses a separate read-only `BoundaryOverlay`.
-3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp, Status) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background (applied at `td` level to override any other row styles). Clicking again deselects. Selection is shared across all tables (current hour + monthly). Status column shows a green "Reported" pill badge when `breach.reported` is true.
+3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp, Status) — Airport column shows `departure_airport` from FlightAware (or "Unknown" if not available). Rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background (applied at `td` level to override any other row styles). Clicking again deselects. Selection is shared across all tables (current hour + monthly). Status column shows a green "Reported" pill badge when `breach.reported` is true.
 4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected. **Report button** at bottom opens a `mailto:` link with pre-filled noise complaint email (subject, body with flight number, altitude, timestamp). Built via `buildReportMailto()` in `OverviewPage.jsx`. **Reported toggle** below the Report button marks a breach as reported via `setBreachReported()` in `breachRepository.js`; when ON, the Report button hides (already sent) and tables show the "Reported" pill. Toggle state persists to Supabase `breaches.reported` column. `breachStore.updateBreachReported()` updates the store; a `reportedUpdates` map in `OverviewPage` propagates changes to `MonthlyBreachesTable`'s local state.
 5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
 6. Monthly bar chart (last 6 months)
-7. Month/year selector dropdowns
+7. Month/year selector dropdowns + **EGTR toggle** (right-aligned in the same row). When EGTR toggle is on, the breaches-by-month table is filtered to only show rows where `departure_airport === 'EGTR'`.
 8. Breaches-by-month table grouped by date headers
 
 ### Breach History Page
@@ -120,18 +121,20 @@ Environment variables in `.env.local`:
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — Supabase publishable (anon) key
 - `VITE_ADSB_FI_API_URL` — ADSB.fi API base URL (default: `https://opendata.adsb.fi/api`)
+- `VITE_FLIGHTAWARE_API_URL` — FlightAware AeroAPI base URL (default: `https://aeroapi.flightaware.com/aeroapi`)
+- `VITE_FLIGHTAWARE_API_KEY` — FlightAware AeroAPI key (required for departure airport lookup)
 - `VITE_POLLING_INTERVAL` — Polling interval (30000ms default)
 - `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet AGL (1300)
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
 
-User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport filter in row), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Airport filter is optional — when blank, no filtering is applied. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
+User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
 
 ## Supabase Database
 
 Storage uses Supabase PostgreSQL (no local IndexedDB). Three tables:
 
-- **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, reported, created_at). `reported` is BOOLEAN DEFAULT FALSE — tracks whether a noise complaint has been filed. Indexed on date, callsign, timestamp.
+- **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, reported, departure_airport, created_at). `reported` is BOOLEAN DEFAULT FALSE — tracks whether a noise complaint has been filed. `departure_airport` is TEXT — ICAO code of the departure airport, populated via FlightAware AeroAPI after each breach is saved. Indexed on date, callsign, timestamp.
 - **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter, airportElevation.
 - **last_breaches** — Duplicate prevention (callsign_altitude_key UNIQUE, last_recorded_at, latitude, longitude).
 
@@ -182,6 +185,16 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - **Rate limiting**: Client-side 10s minimum between requests; exponential backoff on 429 (60s base, doubling)
 - **Unit conversion**: `flightClient.js` converts ADSB.fi units (feet, knots, ft/min) → internal units (meters, m/s) so downstream code (breach detection, FlightMarker) is unchanged
 - **Response field**: v2 API returns aircraft in `response.data.aircraft` (not `.ac`)
+
+## FlightAware AeroAPI Integration
+
+- **API**: `https://aeroapi.flightaware.com/aeroapi` (requires API key)
+- **Endpoint**: `GET /flights/{callsign}` — returns flight details including origin airport
+- **Auth**: `x-apikey` header with key from `VITE_FLIGHTAWARE_API_KEY`
+- **CORS**: In dev, Vite proxies `/flightaware-api` → `https://aeroapi.flightaware.com/aeroapi`
+- **Rate limiting**: Client-side 6s minimum between requests (Personal plan = 10 req/min)
+- **Flow**: Breach saved → call FlightAware → update `departure_airport` with origin ICAO code / on failure: keep breach with null airport (displays as "Unknown")
+- **Client**: `flightAwareClient.js` follows same pattern as `flightClient.js`
 
 ## Design
 
