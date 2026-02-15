@@ -562,9 +562,12 @@ function MonthlyChart({ months }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, egtrOnly }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -591,6 +594,12 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
     return result;
   }, [breaches, reportedUpdates, egtrOnly]);
 
+  // Reset to first page when filters or data change
+  useEffect(() => { setPage(0); }, [displayBreaches]);
+
+  const totalPages = Math.max(1, Math.ceil(displayBreaches.length / PAGE_SIZE));
+  const pageBreaches = displayBreaches.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
   if (loading) {
@@ -606,9 +615,9 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
     );
   }
 
-  // Group by date
+  // Group the current page's breaches by date
   const grouped = {};
-  displayBreaches.forEach((b) => {
+  pageBreaches.forEach((b) => {
     if (!grouped[b.date]) grouped[b.date] = [];
     grouped[b.date].push(b);
   });
@@ -654,6 +663,25 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
           })}
         </tbody>
       </table>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="pagination-btn"
+            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 0}
+          >
+            Previous
+          </button>
+          <span className="pagination-info">{page + 1} of {totalPages}</span>
+          <button
+            className="pagination-btn"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= totalPages - 1}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

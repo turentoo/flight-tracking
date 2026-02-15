@@ -107,7 +107,7 @@ Two-column layout at top: main content (left) + Alert explorer (right, 280px sti
 5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
 6. Monthly bar chart (last 6 months)
 7. Month/year selector dropdowns + **EGTR toggle** (right-aligned in the same row). When EGTR toggle is on, the breaches-by-month table is filtered to only show rows where `departure_airport === 'EGTR'`.
-8. Breaches-by-month table grouped by date headers
+8. Breaches-by-month table grouped by date headers, paginated (20 per page, Previous/Next controls)
 
 ### Breach History Page
 - Calendar grid with breach count badges
