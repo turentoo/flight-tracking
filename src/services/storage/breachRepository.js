@@ -16,6 +16,7 @@ const toRow = (breach) => ({
   velocity: breach.velocity,
   heading: breach.heading,
   icao24: breach.icao24,
+  departure_airport: breach.departureAirport || null,
 });
 
 /**
@@ -246,6 +247,38 @@ export const setBreachReported = async (id, reported) => {
     if (error) throw error;
   } catch (error) {
     console.error('Error updating breach reported status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update the departure airport of a breach
+ */
+export const updateBreachDepartureAirport = async (id, airportCode) => {
+  try {
+    const { error } = await supabase
+      .from('breaches')
+      .update({ departure_airport: airportCode })
+      .eq('id', id);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating breach departure airport:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a single breach by id
+ */
+export const deleteBreach = async (id) => {
+  try {
+    const { error } = await supabase
+      .from('breaches')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting breach:', error);
     throw error;
   }
 };

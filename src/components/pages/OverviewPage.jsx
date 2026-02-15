@@ -8,7 +8,6 @@ import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
 import { getBreachesForMonth, getMonthlyStats, setBreachReported } from '../../services/storage/breachRepository';
 import { formatCallsign } from '../../utils/formatters';
-import { REFERENCE_AIRPORT_ICAO } from '../../utils/constants';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
 import EmptyState from '../shared/EmptyState';
 import './OverviewPage.css';
@@ -298,7 +297,7 @@ function AlertExplorer({ breach, boundary, onReportedChange }) {
             </svg>
           </span>
           <div>
-            <div className="alert-detail-value">{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</div>
+            <div className="alert-detail-value">{breach.departure_airport || 'Unknown'}</div>
             <div className="alert-detail-label">Airport</div>
           </div>
         </div>
@@ -400,7 +399,6 @@ function CurrentHourChart({ breaches }) {
   }, [now]);
 
   const startTime = new Date(snappedNow.getTime() - 55 * 60 * 1000);
-  const rangeLabel = `${format(startTime, 'HH:mm')} - ${format(snappedNow, 'HH:mm')}`;
 
   // Group breaches into 5-minute intervals aligned to :00, :05, :10, etc.
   const chartData = useMemo(() => {
@@ -431,7 +429,7 @@ function CurrentHourChart({ breaches }) {
   return (
     <div className="card current-hour-section">
       <h2 className="section-heading">
-        Past 60 minutes: {rangeLabel}
+        Past 60 minutes
       </h2>
       <div className="current-hour-row">
         <div className="chart-container current-hour-chart">
@@ -494,7 +492,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
             >
               <td>{formatCallsign(b.callsign)}</td>
               <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
-              <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
+              <td>{b.departure_airport || 'Unknown'}</td>
               <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
               <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
               <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
@@ -640,7 +638,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
                 >
                   <td>{formatCallsign(b.callsign)}</td>
                   <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
-                  <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
+                  <td>{b.departure_airport || 'Unknown'}</td>
                   <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
                   <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
                   <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>

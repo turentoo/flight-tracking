@@ -10,6 +10,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/adsb-api/, '/api'),
       },
+      '/flightaware-api': {
+        target: 'https://aeroapi.flightaware.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/flightaware-api/, '/aeroapi'),
+      },
     },
   },
   build: {

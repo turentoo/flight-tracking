@@ -59,6 +59,28 @@ export const useBreachStore = create((set, get) => ({
     set({ isLoading });
   },
 
+  removeBreach: (id) => {
+    set((state) => {
+      const breaches = state.breaches.filter((b) => b.id !== id);
+      return {
+        breaches,
+        breachCount: breaches.length,
+        currentHourBreaches: state.currentHourBreaches.filter((b) => b.id !== id),
+      };
+    });
+  },
+
+  updateBreachAirport: (id, airportCode) => {
+    set((state) => ({
+      breaches: state.breaches.map((b) =>
+        b.id === id ? { ...b, departure_airport: airportCode } : b
+      ),
+      currentHourBreaches: state.currentHourBreaches.map((b) =>
+        b.id === id ? { ...b, departure_airport: airportCode } : b
+      ),
+    }));
+  },
+
   updateBreachReported: (id, reported) => {
     set((state) => ({
       breaches: state.breaches.map((b) =>

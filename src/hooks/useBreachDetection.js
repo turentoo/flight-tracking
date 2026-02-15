@@ -4,7 +4,8 @@ import { useConfigStore } from '../store/configStore';
 import { useBreachStore } from '../store/breachStore';
 import { calculateAGL, isAltitudeBreach } from '../services/calculations/aglCalculator';
 import { isWithinBoundary } from '../services/calculations/boundaryChecker';
-import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches } from '../services/storage/breachRepository';
+import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches, updateBreachDepartureAirport, deleteBreach } from '../services/storage/breachRepository';
+import { fetchDepartureAirport } from '../services/api/flightAwareClient';
 import { formatCallsign } from '../utils/formatters';
 import { getCurrentDate, getCurrentHour } from '../utils/timeHelpers';
 import { DUPLICATE_PREVENTION_WINDOW } from '../utils/constants';
@@ -47,7 +48,8 @@ export default function useBreachDetection(isActive) {
   const boundary = useConfigStore((s) => s.boundary);
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const groundElevation = useConfigStore((s) => s.airportElevation);
-  const { addBreach: addBreachToStore, setCurrentHourBreaches } = useBreachStore();
+  const airportFilter = useConfigStore((s) => s.airportFilter);
+  const { addBreach: addBreachToStore, setCurrentHourBreaches, removeBreach: removeBreachFromStore, updateBreachAirport } = useBreachStore();
 
   // Track the last-processed update so we don't re-scan the same data.
   const lastProcessedRef = useRef(null);
@@ -139,6 +141,27 @@ export default function useBreachDetection(isActive) {
 
           // Notify callback if registered.
           if (onBreachRef.current) onBreachRef.current(saved);
+
+          // Enrich with departure airport from FlightAware if airport filter is set.
+          if (airportFilter) {
+            try {
+              const origin = await fetchDepartureAirport(flight.callsign);
+              if (origin) {
+                if (origin.toUpperCase() === airportFilter.toUpperCase()) {
+                  await updateBreachDepartureAirport(saved.id, origin);
+                  updateBreachAirport(saved.id, origin);
+                } else {
+                  // Departure airport doesn't match filter — remove the breach.
+                  await deleteBreach(saved.id);
+                  removeBreachFromStore(saved.id);
+                  newBreachCount--;
+                }
+              }
+              // If origin is null (lookup failed), keep breach with unknown airport.
+            } catch {
+              // FlightAware failure — keep breach, airport stays unknown.
+            }
+          }
         } catch (err) {
           console.error('Failed to record breach:', err);
         }
@@ -158,7 +181,10 @@ export default function useBreachDetection(isActive) {
     boundary,
     altitudeThreshold,
     groundElevation,
+    airportFilter,
     addBreachToStore,
+    removeBreachFromStore,
+    updateBreachAirport,
     refreshCurrentHour,
   ]);
 

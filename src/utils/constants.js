@@ -6,6 +6,10 @@ export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const ADSB_FI_API_URL = import.meta.env.VITE_ADSB_FI_API_URL || 'https://opendata.adsb.fi/api';
 export const OURAIRPORTS_API_URL = import.meta.env.VITE_OURAIRPORTS_API_URL;
 
+// FlightAware AeroAPI Configuration
+export const FLIGHTAWARE_API_URL = import.meta.env.VITE_FLIGHTAWARE_API_URL || 'https://aeroapi.flightaware.com/aeroapi';
+export const FLIGHTAWARE_API_KEY = import.meta.env.VITE_FLIGHTAWARE_API_KEY;
+
 // Polling Configuration
 export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '30000', 10);
 export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '30000', 10);
