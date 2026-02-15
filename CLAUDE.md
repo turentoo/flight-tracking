@@ -43,7 +43,7 @@ src/
 │   │   │                            6-month stats, monthly chart, breaches-by-month table
 │   │   └── BreachHistoryPage.jsx/css — Calendar drill-down history page
 │   ├── config/
-│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, hours, report email)
+│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, airport, hours, report email)
 │   ├── map/
 │   │   ├── FlightMap.jsx/css      — Interactive Leaflet map with flights and boundary
 │   │   ├── FlightMarker.jsx       — Rotated aircraft icon with popup
@@ -106,7 +106,7 @@ Two-column layout at top: main content (left) + Alert explorer (right, 280px sti
 4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected. **Report button** at bottom opens a `mailto:` link with pre-filled noise complaint email (subject, body with flight number, altitude, timestamp). Built via `buildReportMailto()` in `OverviewPage.jsx`. **Reported toggle** below the Report button marks a breach as reported via `setBreachReported()` in `breachRepository.js`; when ON, the Report button hides (already sent) and tables show the "Reported" pill. Toggle state persists to Supabase `breaches.reported` column. `breachStore.updateBreachReported()` updates the store; a `reportedUpdates` map in `OverviewPage` propagates changes to `MonthlyBreachesTable`'s local state.
 5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
 6. Monthly bar chart (last 6 months)
-7. Month/year selector dropdowns + **EGTR toggle** (right-aligned in the same row). When EGTR toggle is on, the breaches-by-month table is filtered to only show rows where `departure_airport === 'EGTR'`.
+7. Month/year selector dropdowns + **airport toggle** (right-aligned in the same row). Toggle label is the configured airport code (default "EGTR", editable in Settings). When on, the breaches-by-month table is filtered to only show rows where `departure_airport` matches the configured airport.
 8. Breaches-by-month table grouped by date headers, paginated (20 per page, Previous/Next controls)
 
 ### Breach History Page
@@ -128,7 +128,7 @@ Environment variables in `.env.local`:
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
 
-User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
+User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport code in row), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Airport defaults to "EGTR" and is used as the label/filter value for the airport toggle on the monthly breaches table. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
 
 ## Supabase Database
 
