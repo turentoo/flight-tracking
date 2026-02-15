@@ -88,16 +88,19 @@ export const getBreachesForHour = async (date, hour) => {
 };
 
 /**
- * Get breaches for current hour
+ * Get breaches from the past 60 minutes
  */
-export const getBreachesForCurrentHour = async () => {
+export const getRecentBreaches = async () => {
   try {
-    const now = new Date();
-    const date = formatDate(now);
-    const hour = now.getHours();
-    return await getBreachesForHour(date, hour);
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .gte('timestamp', cutoff);
+    if (error) throw error;
+    return data;
   } catch (error) {
-    console.error('Error fetching breaches for current hour:', error);
+    console.error('Error fetching recent breaches:', error);
     throw error;
   }
 };

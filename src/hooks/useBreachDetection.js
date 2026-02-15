@@ -4,7 +4,7 @@ import { useConfigStore } from '../store/configStore';
 import { useBreachStore } from '../store/breachStore';
 import { calculateAGL, isAltitudeBreach } from '../services/calculations/aglCalculator';
 import { isWithinBoundary } from '../services/calculations/boundaryChecker';
-import { addBreach, getLastBreachForKey, updateLastBreach, getBreachesForCurrentHour } from '../services/storage/breachRepository';
+import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches } from '../services/storage/breachRepository';
 import { formatCallsign } from '../utils/formatters';
 import { getCurrentDate, getCurrentHour } from '../utils/timeHelpers';
 import { DUPLICATE_PREVENTION_WINDOW } from '../utils/constants';
@@ -58,10 +58,10 @@ export default function useBreachDetection(isActive) {
 
   const refreshCurrentHour = useCallback(async () => {
     try {
-      const breaches = await getBreachesForCurrentHour();
+      const breaches = await getRecentBreaches();
       setCurrentHourBreaches(breaches);
     } catch (err) {
-      console.error('Failed to refresh current-hour breaches:', err);
+      console.error('Failed to refresh recent breaches:', err);
     }
   }, [setCurrentHourBreaches]);
 

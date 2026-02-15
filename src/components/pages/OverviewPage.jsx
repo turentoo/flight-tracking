@@ -7,7 +7,6 @@ import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
 import { getBreachesForMonth, getMonthlyStats, setBreachReported } from '../../services/storage/breachRepository';
-import { getCurrentHour, getHourRange } from '../../utils/timeHelpers';
 import { formatCallsign } from '../../utils/formatters';
 import { REFERENCE_AIRPORT_ICAO } from '../../utils/constants';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
@@ -244,7 +243,7 @@ function buildReportMailto(breach, email) {
     `your address`,
   ].join('\n');
 
-  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function AlertExplorer({ breach, boundary, onReportedChange }) {
@@ -391,38 +390,53 @@ function AlertExplorer({ breach, boundary, onReportedChange }) {
 }
 
 function CurrentHourChart({ breaches }) {
-  const hour = getCurrentHour();
-  const hourRange = getHourRange(hour);
+  const now = useMemo(() => new Date(), [breaches]);
 
-  // Group breaches into 5-minute intervals
+  // Snap to clean 5-minute boundaries (e.g. :00, :05, :10, ...)
+  const snappedNow = useMemo(() => {
+    const d = new Date(now);
+    d.setMinutes(Math.floor(d.getMinutes() / 5) * 5, 0, 0);
+    return d;
+  }, [now]);
+
+  const startTime = new Date(snappedNow.getTime() - 55 * 60 * 1000);
+  const rangeLabel = `${format(startTime, 'HH:mm')} - ${format(snappedNow, 'HH:mm')}`;
+
+  // Group breaches into 5-minute intervals aligned to :00, :05, :10, etc.
   const chartData = useMemo(() => {
     const intervals = [];
-    for (let m = 0; m < 60; m += 5) {
+    for (let i = 0; i < 12; i++) {
+      const slotStart = new Date(startTime.getTime() + i * 5 * 60 * 1000);
       intervals.push({
-        label: `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+        label: format(slotStart, 'HH:mm'),
+        start: slotStart.getTime(),
+        end: slotStart.getTime() + 5 * 60 * 1000,
         count: 0,
       });
     }
     breaches.forEach((b) => {
-      const d = new Date(b.timestamp);
-      const min = d.getMinutes();
-      const idx = Math.floor(min / 5);
-      if (idx < intervals.length) intervals[idx].count += 1;
+      const ts = typeof b.timestamp === 'number' ? b.timestamp : new Date(b.timestamp).getTime();
+      for (let i = 0; i < intervals.length; i++) {
+        if (ts >= intervals[i].start && ts < intervals[i].end) {
+          intervals[i].count += 1;
+          break;
+        }
+      }
     });
     return intervals;
-  }, [breaches, hour]);
+  }, [breaches, startTime]);
 
   const hasData = breaches.length > 0;
 
   return (
     <div className="card current-hour-section">
       <h2 className="section-heading">
-        Current hour: {hourRange}
+        Past 60 minutes: {rangeLabel}
       </h2>
       <div className="current-hour-row">
         <div className="chart-container current-hour-chart">
           {!hasData ? (
-            <EmptyState title="No flight activity this hour" description="Breaches will appear here when detected" />
+            <EmptyState title="No flight activity in the past 60 minutes" description="Breaches will appear here when detected" />
           ) : (
             <>
               <div className="chart-legend">

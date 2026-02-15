@@ -43,7 +43,7 @@ src/
 │   │   │                            6-month stats, monthly chart, breaches-by-month table
 │   │   └── BreachHistoryPage.jsx/css — Calendar drill-down history page
 │   ├── config/
-│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, hours)
+│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, airport filter, hours, report email)
 │   ├── map/
 │   │   ├── FlightMap.jsx/css      — Interactive Leaflet map with flights and boundary
 │   │   ├── FlightMarker.jsx       — Rotated aircraft icon with popup
@@ -77,7 +77,7 @@ src/
 │       ├── aglCalculator.js        — AGL calculation and breach threshold check
 │       └── boundaryChecker.js      — Point-in-rectangle check, Haversine distance
 ├── store/
-│   ├── configStore.js      — Boundary, threshold, hours, airport elevation (persisted to Supabase)
+│   ├── configStore.js      — Boundary, threshold, hours, airport filter, report email, airport elevation (persisted to Supabase)
 │   ├── flightStore.js      — Current flights, count, loading/error state
 │   ├── breachStore.js      — Breach records, current hour breaches
 │   └── uiStore.js          — Active page, selected date/hour, modal visibility
@@ -125,14 +125,14 @@ Environment variables in `.env.local`:
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
 
-User configuration is stored in Supabase and editable via the Settings panel (gear icon).
+User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport filter in row), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Airport filter is optional — when blank, no filtering is applied. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
 
 ## Supabase Database
 
 Storage uses Supabase PostgreSQL (no local IndexedDB). Three tables:
 
 - **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, reported, created_at). `reported` is BOOLEAN DEFAULT FALSE — tracks whether a noise complaint has been filed. Indexed on date, callsign, timestamp.
-- **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, airportElevation.
+- **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter, airportElevation.
 - **last_breaches** — Duplicate prevention (callsign_altitude_key UNIQUE, last_recorded_at, latitude, longitude).
 
 RLS is enabled with permissive policies (single-user app). Column naming: snake_case in DB, camelCase mapping in `breachRepository.js`.
