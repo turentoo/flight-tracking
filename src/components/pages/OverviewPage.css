@@ -129,7 +129,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--accent);
+  background-color: var(--text-primary);
 }
 
 .legend-label {
