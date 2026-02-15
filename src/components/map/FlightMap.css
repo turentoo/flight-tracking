@@ -1,0 +1,160 @@
+.flight-map-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
+  gap: 8px;
+}
+
+.flight-map {
+  flex: 1;
+  width: 100%;
+  min-height: 400px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  z-index: 0;
+}
+
+.map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+}
+
+/* Map legend */
+.map-legend {
+  display: flex;
+  gap: 20px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legend-dot {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.legend-boundary {
+  width: 20px;
+  height: 2px;
+  background-color: #646cff;
+  border: none;
+  display: inline-block;
+  background-image: repeating-linear-gradient(
+    90deg,
+    #646cff 0px,
+    #646cff 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+/* Leaflet popup overrides for dark theme */
+.leaflet-popup-content-wrapper {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-tip {
+  background-color: var(--bg-secondary);
+}
+
+.leaflet-popup-close-button {
+  color: var(--text-secondary) !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Flight popup content */
+.flight-popup {
+  font-size: 0.85rem;
+  min-width: 180px;
+}
+
+.flight-popup strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  letter-spacing: 0.04em;
+}
+
+.flight-popup table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.flight-popup td {
+  padding: 3px 0;
+}
+
+.flight-popup td:first-child {
+  color: var(--text-secondary);
+  padding-right: 12px;
+  white-space: nowrap;
+}
+
+.flight-popup td:last-child {
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Override leaflet default marker icon styles */
+.flight-marker-icon {
+  background: none !important;
+  border: none !important;
+}
+
+/* Dark theme for leaflet controls */
+.leaflet-control-zoom a {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.leaflet-control-attribution {
+  background-color: rgba(26, 26, 26, 0.7) !important;
+  color: var(--text-muted) !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--text-secondary) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  .leaflet-popup-content-wrapper {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .leaflet-control-attribution {
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--text-muted) !important;
+  }
+}

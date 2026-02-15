@@ -1,0 +1,140 @@
+.calendar-view {
+  max-width: 560px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cal-nav-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.cal-nav-btn:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent);
+}
+
+.cal-title {
+  text-align: center;
+}
+
+.cal-title h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cal-month-total {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background-color: var(--bg-secondary);
+  cursor: default;
+  transition: all 0.15s;
+}
+
+.cal-day:not(:disabled) {
+  cursor: pointer;
+}
+
+.cal-day:not(:disabled):hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.cal-day.other-month {
+  opacity: 0.3;
+}
+
+.cal-day.today {
+  border-color: var(--accent);
+}
+
+.cal-day.today .day-number {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.cal-day.has-breaches {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.cal-day.has-breaches:hover {
+  background-color: rgba(220, 38, 38, 0.15);
+  border-color: #dc2626;
+}
+
+.day-number {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.day-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #dc2626;
+  background-color: rgba(220, 38, 38, 0.15);
+  border-radius: 10px;
+  padding: 1px 6px;
+  line-height: 1.4;
+}

@@ -1,0 +1,43 @@
+.hour-detail-view {
+  max-width: 800px;
+}
+
+.hour-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.hour-detail-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-detail-date {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.hour-detail-total {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.hour-loading,
+.hour-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.hour-breach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

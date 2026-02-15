@@ -1,0 +1,131 @@
+.day-detail-view {
+  max-width: 700px;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 12px;
+  transition: opacity 0.15s;
+}
+
+.back-btn:hover {
+  opacity: 0.8;
+  background: none;
+  border: none;
+}
+
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.day-total {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.day-loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.hour-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hour-bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-color: var(--bg-secondary);
+  cursor: default;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.hour-bar-row:not(:disabled) {
+  cursor: pointer;
+}
+
+.hour-bar-row:not(:disabled):hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.hour-bar-row:disabled {
+  opacity: 0.5;
+}
+
+.hour-label {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.hour-bar-track {
+  height: 20px;
+  background-color: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hour-bar-fill {
+  height: 100%;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.hour-bar-row.has-breaches .hour-bar-fill {
+  background-color: #dc2626;
+  opacity: 0.7;
+}
+
+.hour-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hour-bar-row.has-breaches .hour-count {
+  color: #dc2626;
+}
+
+@media (max-width: 480px) {
+  .hour-bar-row {
+    grid-template-columns: 100px 1fr 32px;
+    gap: 8px;
+    padding: 6px 8px;
+  }
+}
