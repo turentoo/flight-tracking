@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END } from '../utils/constants';
+import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END, DEFAULT_REPORT_EMAIL } from '../utils/constants';
 import supabase from '../services/storage/db';
 
 const getConfigValue = async (key) => {
@@ -24,6 +24,7 @@ export const useConfigStore = create((set) => ({
   altitudeThreshold: ALTITUDE_THRESHOLD,
   activeHoursStart: ACTIVE_HOURS_START,
   activeHoursEnd: ACTIVE_HOURS_END,
+  reportEmail: DEFAULT_REPORT_EMAIL,
   airportElevation: null,
   isLoading: false,
   error: null,
@@ -36,12 +37,14 @@ export const useConfigStore = create((set) => ({
       const activeHoursStart = await getConfigValue('activeHoursStart');
       const activeHoursEnd = await getConfigValue('activeHoursEnd');
       const airportElevation = await getConfigValue('airportElevation');
+      const reportEmail = await getConfigValue('reportEmail');
 
       set({
         boundary: boundary || DEFAULT_BOUNDARY,
         altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
         activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
         activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+        reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
         airportElevation: airportElevation || null,
         isLoading: false,
         error: null,
@@ -74,6 +77,15 @@ export const useConfigStore = create((set) => ({
       await setConfigValue('activeHoursStart', start);
       await setConfigValue('activeHoursEnd', end);
       set({ activeHoursStart: start, activeHoursEnd: end, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  setReportEmail: async (email) => {
+    try {
+      await setConfigValue('reportEmail', email);
+      set({ reportEmail: email, error: null });
     } catch (error) {
       set({ error: error.message });
     }

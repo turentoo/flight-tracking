@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '../../store/configStore';
-import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END } from '../../utils/constants';
+import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END, DEFAULT_REPORT_EMAIL } from '../../utils/constants';
 import { exportBreachesCsv } from '../../utils/exportCsv';
 import { deleteAllBreaches } from '../../services/storage/breachRepository';
 import { useBreachStore } from '../../store/breachStore';
@@ -16,6 +16,8 @@ export default function ConfigPanel({ onClose }) {
     setBoundary,
     setAltitudeThreshold,
     setActiveHours,
+    reportEmail,
+    setReportEmail,
   } = useConfigStore();
 
   const { setBreaches, setCurrentHourBreaches } = useBreachStore();
@@ -28,6 +30,7 @@ export default function ConfigPanel({ onClose }) {
     altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
     activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
     activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+    reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
   });
 
   const [exportStatus, setExportStatus] = useState(null);
@@ -42,16 +45,18 @@ export default function ConfigPanel({ onClose }) {
       altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
       activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
       activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+      reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
     });
-  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd]);
+  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail]);
 
   const isCoordField = (name) => ['latMin', 'latMax', 'lonMin', 'lonMax'].includes(name);
+  const isTextField = (name) => name === 'reportEmail';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: isCoordField(name) ? value : parseInt(value, 10),
+      [name]: isCoordField(name) || isTextField(name) ? value : parseInt(value, 10),
     }));
   };
 
@@ -66,6 +71,7 @@ export default function ConfigPanel({ onClose }) {
       await setBoundary(newBoundary);
       await setAltitudeThreshold(formData.altitudeThreshold);
       await setActiveHours(formData.activeHoursStart, formData.activeHoursEnd);
+      await setReportEmail(formData.reportEmail);
       onClose();
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -81,6 +87,7 @@ export default function ConfigPanel({ onClose }) {
       altitudeThreshold: ALTITUDE_THRESHOLD,
       activeHoursStart: ACTIVE_HOURS_START,
       activeHoursEnd: ACTIVE_HOURS_END,
+      reportEmail: DEFAULT_REPORT_EMAIL,
     });
   };
 
@@ -171,6 +178,16 @@ export default function ConfigPanel({ onClose }) {
             <label htmlFor="cfg-end">End Hour (24h)</label>
             <input id="cfg-end" type="number" name="activeHoursEnd" value={formData.activeHoursEnd} onChange={handleChange} min="0" max="23" />
           </div>
+        </div>
+      </div>
+
+      <div className="config-section">
+        <h3>Report Email</h3>
+        <p className="section-description">Recipient email address for noise complaint reports</p>
+
+        <div className="form-group">
+          <label htmlFor="cfg-reportEmail">Email Address</label>
+          <input id="cfg-reportEmail" type="email" name="reportEmail" value={formData.reportEmail} onChange={handleChange} />
         </div>
       </div>
 

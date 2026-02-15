@@ -221,7 +221,7 @@ function AlertMapFit({ lat, lng, boundary }) {
   return null;
 }
 
-function buildReportMailto(breach) {
+function buildReportMailto(breach, email) {
   const timestamp = format(new Date(breach.timestamp), 'd MMM yyyy HH:mm:ss');
   const altitude = breach.altitude != null ? Math.round(breach.altitude) : 'N/A';
   const callsign = formatCallsign(breach.callsign);
@@ -244,11 +244,12 @@ function buildReportMailto(breach) {
     `your address`,
   ].join('\n');
 
-  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function AlertExplorer({ breach, boundary, onReportedChange }) {
   const [toggling, setToggling] = useState(false);
+  const reportEmail = useConfigStore((s) => s.reportEmail);
 
   if (!breach) {
     return (
@@ -362,7 +363,7 @@ function AlertExplorer({ breach, boundary, onReportedChange }) {
       {!isReported && (
         <a
           className="report-button"
-          href={buildReportMailto(breach)}
+          href={buildReportMailto(breach, reportEmail)}
           target="_blank"
           rel="noopener noreferrer"
         >

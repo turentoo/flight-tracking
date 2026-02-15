@@ -25,6 +25,9 @@ export const DEFAULT_BOUNDARY = {
   lonMax: parseFloat(import.meta.env.VITE_DEFAULT_BOUNDARY_LON_MAX || '-0.277525'),
 };
 
+// Default report email recipient
+export const DEFAULT_REPORT_EMAIL = 'your@email.com';
+
 // Radlett Aerodrome ICAO code (for elevation lookup)
 export const REFERENCE_AIRPORT_ICAO = 'EGTR';
 
