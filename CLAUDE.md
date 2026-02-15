@@ -7,13 +7,13 @@ React application for monitoring low-altitude aircraft over Radlett, UK. Polls O
 - **React 18.2** (JSX, not TypeScript)
 - **Vite 5** (build tool and dev server)
 - **Zustand** (state management)
-- **Dexie.js** (IndexedDB wrapper for persistent storage)
+- **Supabase** (`@supabase/supabase-js` — PostgreSQL cloud storage)
 - **React Leaflet 4 + Leaflet** (map visualization)
-- **Recharts** (charts)
+- **Recharts** (charts — bar charts for current hour and monthly overview)
 - **date-fns** (date/time utilities)
 - **Axios** (HTTP client)
 - **ESLint 8** with eslint-plugin-react
-- **CSS3** with CSS variables (dark/light theme, no preprocessor)
+- **CSS3** with CSS variables (light theme default, dark via media query)
 - ES modules (`"type": "module"` in package.json)
 
 ## Commands
@@ -28,69 +28,112 @@ React application for monitoring low-altitude aircraft over Radlett, UK. Polls O
 ```
 src/
 ├── main.jsx                — Entry point, renders <App /> into #root
-├── App.jsx                 — Main app shell with layout, tabs, config modal
-├── App.css                 — App layout styles
-├── index.css               — Global styles, CSS variables, dark/light theme
+├── App.jsx                 — App shell: Sidebar + TopBar + page routing + config modal
+├── App.css                 — App layout styles (sidebar + main area)
+├── index.css               — Global styles, CSS variables, light/dark theme
 ├── components/
 │   ├── layout/
-│   │   ├── Header.jsx/css          — App title bar + settings button
-│   │   ├── StatusBar.jsx/css       — Monitoring status, flight count, breach count, errors
-│   │   └── TabNavigation.jsx/css   — Tab switcher (Map / Current Hour / History)
+│   │   ├── Sidebar.jsx/css        — Left navigation sidebar (Overview, Breach history)
+│   │   ├── TopBar.jsx/css         — Breadcrumb bar + settings gear icon
+│   │   ├── Header.jsx/css         — [Legacy] App title bar (replaced by TopBar)
+│   │   ├── StatusBar.jsx/css      — [Legacy] Monitoring status bar (replaced by TopBar)
+│   │   └── TabNavigation.jsx/css  — [Legacy] Tab switcher (replaced by Sidebar)
+│   ├── pages/
+│   │   ├── OverviewPage.jsx/css   — Main dashboard: current hour chart, breach table,
+│   │   │                            6-month stats, monthly chart, breaches-by-month table
+│   │   └── BreachHistoryPage.jsx/css — Calendar drill-down history page
 │   ├── config/
-│   │   └── ConfigPanel.jsx/css     — Configuration modal (boundary, threshold, hours)
+│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, hours)
 │   ├── map/
-│   │   ├── FlightMap.jsx/css       — Interactive Leaflet map with flights and boundary
-│   │   ├── FlightMarker.jsx        — Rotated aircraft icon with popup
-│   │   └── BoundaryOverlay.jsx     — Dashed rectangle for monitoring area
+│   │   ├── FlightMap.jsx/css      — Interactive Leaflet map with flights and boundary
+│   │   ├── FlightMarker.jsx       — Rotated aircraft icon with popup
+│   │   └── BoundaryOverlay.jsx    — Dashed rectangle for monitoring area
 │   ├── current/
-│   │   ├── CurrentHourPanel.jsx/css — Real-time breaches for the current hour
+│   │   ├── CurrentHourPanel.jsx/css — [Legacy] Standalone current hour view
 │   │   ├── BreachCard.jsx/css       — Individual breach display card
 │   │   └── BreachAlertBanner.jsx/css — Red toast notification on new breaches
 │   ├── history/
-│   │   ├── HistoryView.jsx/css      — Drill-down orchestrator (calendar → day → hour)
+│   │   ├── HistoryView.jsx/css      — [Legacy] Standalone drill-down orchestrator
 │   │   ├── CalendarView.jsx/css     — Monthly grid with breach count badges
 │   │   ├── DayDetailView.jsx/css    — Hourly bar chart for a date
 │   │   ├── HourDetailView.jsx/css   — Breach card list for an hour
 │   │   └── BreachDetailModal.jsx/css — Full breach detail modal
 │   └── shared/
+│       ├── EmptyState.jsx/css       — Reusable empty state (icon + title + description)
 │       └── ErrorBoundary.jsx/css    — App-wide error boundary with retry
 ├── hooks/
 │   ├── useFlightPolling.js          — Adaptive API polling engine
 │   ├── useBreachDetection.js        — Breach evaluation + persistence
 │   ├── useTimeWindow.js             — Operating hours awareness
-│   └── useBreachHistory.js          — Historical data loading from IndexedDB
+│   └── useBreachHistory.js          — Historical data loading from Supabase
 ├── services/
 │   ├── api/
-│   │   ├── openskyClient.js        — OpenSky Network API client (fetch flights in boundary)
+│   │   ├── openskyClient.js        — OpenSky Network API client (with optional auth)
 │   │   └── ourAirportsClient.js    — OurAirports CSV data client (airport elevation)
 │   ├── storage/
-│   │   ├── db.js                   — Dexie database schema (breaches, config, lastBreaches)
-│   │   └── breachRepository.js     — Breach CRUD operations, queries by date/hour/callsign
+│   │   ├── db.js                   — Supabase client initialization
+│   │   └── breachRepository.js     — Breach CRUD via Supabase (queries by date/hour/month, monthly stats)
 │   └── calculations/
 │       ├── aglCalculator.js        — AGL calculation and breach threshold check
 │       └── boundaryChecker.js      — Point-in-rectangle check, Haversine distance
 ├── store/
-│   ├── configStore.js      — Boundary, threshold, hours, airport elevation (persisted to IndexedDB)
+│   ├── configStore.js      — Boundary, threshold, hours, airport elevation (persisted to Supabase)
 │   ├── flightStore.js      — Current flights, count, loading/error state
 │   ├── breachStore.js      — Breach records, current hour breaches
-│   └── uiStore.js          — Active tab, selected date/hour, modal visibility
+│   └── uiStore.js          — Active page, selected date/hour, modal visibility
 └── utils/
-    ├── constants.js        — Config from env vars, defaults, ICAO code
+    ├── constants.js        — Config from env vars, defaults, ICAO code, Supabase URL/key
     ├── timeHelpers.js      — Operating hours check, date formatting, hour ranges
-    └── formatters.js       — Altitude, velocity, heading, coordinate formatting
+    ├── formatters.js       — Altitude, velocity, heading, coordinate formatting
+    └── exportCsv.js        — CSV export utility for breach data
 ```
+
+## UI Layout
+
+The app uses a **sidebar navigation layout** matching the Figma design:
+
+- **Left sidebar** (220px): "Flight Tracking" logo, "Dashboards > Overview" and "Pages > Breach history" nav items
+- **Top bar**: Breadcrumb (e.g. "Dashboards / Overview") + settings gear icon
+- **Main content**: Scrollable area with light gray background
+
+### Overview Page (default)
+1. Current hour bar chart (5-min intervals) with breach count legend
+2. Breaches table (Flight number, Airport, Altitude, Timestamp)
+3. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
+4. Monthly bar chart (last 6 months)
+5. Month/year selector dropdowns
+6. Breaches-by-month table grouped by date headers
+
+### Breach History Page
+- Calendar grid with breach count badges
+- Drill-down: Calendar → Day (hourly bars) → Hour (breach cards) → Breach detail modal
+
+All tables and charts have **graceful empty states** when no data is present.
 
 ## Configuration
 
 Environment variables in `.env.local`:
+- `VITE_SUPABASE_URL` — Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — Supabase publishable (anon) key
 - `VITE_OPENSKY_API_URL` — OpenSky API base URL
+- `VITE_OPENSKY_USERNAME` / `VITE_OPENSKY_PASSWORD` — Optional auth credentials
 - `VITE_POLLING_INTERVAL` — Normal polling interval (60000ms)
 - `VITE_ACTIVE_POLLING_INTERVAL` — Active polling interval (20000ms)
 - `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet AGL (1300)
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
 
-User configuration is stored in IndexedDB and editable via the Settings panel.
+User configuration is stored in Supabase and editable via the Settings panel (gear icon).
+
+## Supabase Database
+
+Storage uses Supabase PostgreSQL (no local IndexedDB). Three tables:
+
+- **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, created_at). Indexed on date, callsign, timestamp.
+- **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, airportElevation.
+- **last_breaches** — Duplicate prevention (callsign_altitude_key UNIQUE, last_recorded_at, latitude, longitude).
+
+RLS is enabled with permissive policies (single-user app). Column naming: snake_case in DB, camelCase mapping in `breachRepository.js`.
 
 ## Default Monitoring Boundary (Radlett)
 
@@ -105,62 +148,19 @@ User configuration is stored in IndexedDB and editable via the Settings panel.
 - **Duplicate prevention:** Same callsign+altitude combo not re-recorded within 60s.
 - **Operating hours:** 9am–7pm local time. Polling stops outside this window.
 
-## Current State
+## Theme
 
-**All 7 phases complete.** The application is fully functional.
-
-### Phase 1 — Foundation & Configuration
-- App shell with Header, StatusBar, TabNavigation, ConfigPanel
-- Zustand stores (config, flight, breach, UI) with IndexedDB persistence
-- Dexie database schema for breaches and config
-- API clients for OpenSky Network and OurAirports
-- AGL calculator and boundary checker
-- Breach repository with full query support
-
-### Phase 2 — API Integration & Polling
-- `useFlightPolling` hook with adaptive polling (60s normal, 20s when flights detected)
-- `useTimeWindow` hook for operating hours awareness (re-checks every 30s)
-- OpenSky Network authentication support via `VITE_OPENSKY_USERNAME`/`VITE_OPENSKY_PASSWORD`
-- Live flight count and "last updated X s ago" in StatusBar
-
-### Phase 3 — Map Visualization
-- Interactive Leaflet map centered on monitoring boundary
-- Aircraft markers rotated to heading, coloured red when below threshold
-- Clickable markers with popup showing all flight data including AGL
-- Dashed boundary rectangle overlay with legend
-
-### Phase 4 — Breach Detection
-- `useBreachDetection` hook: evaluates every polled flight against boundary, altitude, on-ground
-- Duplicate prevention via callsign+altitude bucketing with 60s window
-- Persists breaches to IndexedDB and updates Zustand store in real-time
-- `BreachAlertBanner`: red toast notification on new breaches (auto-dismiss 8s)
-
-### Phase 5 — Current Hour Panel
-- `CurrentHourPanel` showing all breaches in the current hour
-- `BreachCard` with 4-stat grid (AGL, altitude, speed, heading), callsign, ICAO24, coordinates
-- Sorted most-recent-first, refreshes every minute for hour rollover
-
-### Phase 6 — Calendar & Historical Views
-- `CalendarView`: monthly grid with breach count badges, prev/next month navigation
-- `DayDetailView`: hourly bar chart for a selected date (operating hours only)
-- `HourDetailView`: breach card list for a specific hour
-- `BreachDetailModal`: full-detail modal with all fields
-- Drill-down navigation: Calendar → Day → Hour → Breach detail
-
-### Phase 7 — Polish & Optimization
-- `ErrorBoundary` wrapping the entire app
-- CSV export of all breach data (Settings → Data Management → Export CSV)
-- Clear all data with two-click confirmation
-- Vite chunk splitting (vendor-react, vendor-map, vendor-charts)
-- Keyboard accessibility (Escape closes modals)
-- `htmlFor` labels on all form inputs
-- Dark/light theme via CSS variables
+- **Light theme by default** (white cards on `#f0f2f5` background)
+- Dark mode via `prefers-color-scheme: dark` media query
+- CSS variables: `--bg-primary`, `--bg-card`, `--bg-secondary`, `--text-primary`, `--accent`, `--chart-1` through `--chart-4`, `--stat-blue/teal/dark/purple`
 
 ## Conventions
 
-- Functional components with hooks (useState, useEffect, etc.)
+- Functional components with hooks (useState, useEffect, useMemo, useCallback)
 - File extensions: `.jsx` for React components, `.js` for plain JS
 - CSS files co-located with components (ComponentName.css)
-- Dark theme by default with `prefers-color-scheme: light` media query support
+- Light theme by default with `prefers-color-scheme: dark` media query support
 - Zustand stores in `src/store/`, one per domain
 - Services organized by concern: `api/`, `storage/`, `calculations/`
+- Pages in `src/components/pages/`, layout in `src/components/layout/`
+- Reusable shared components in `src/components/shared/`
