@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END } from '../utils/constants';
-import db from '../services/storage/db';
+import supabase from '../services/storage/db';
+
+const getConfigValue = async (key) => {
+  const { data, error } = await supabase
+    .from('config')
+    .select('value')
+    .eq('key', key)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.value ?? null;
+};
+
+const setConfigValue = async (key, value) => {
+  const { error } = await supabase
+    .from('config')
+    .upsert({ key, value, updated_at: Date.now() }, { onConflict: 'key' });
+  if (error) throw error;
+};
 
 export const useConfigStore = create((set) => ({
   boundary: DEFAULT_BOUNDARY,
@@ -14,18 +31,18 @@ export const useConfigStore = create((set) => ({
   loadConfig: async () => {
     set({ isLoading: true, error: null });
     try {
-      const boundary = await db.config.get('boundary');
-      const altitudeThreshold = await db.config.get('altitudeThreshold');
-      const activeHoursStart = await db.config.get('activeHoursStart');
-      const activeHoursEnd = await db.config.get('activeHoursEnd');
-      const airportElevation = await db.config.get('airportElevation');
+      const boundary = await getConfigValue('boundary');
+      const altitudeThreshold = await getConfigValue('altitudeThreshold');
+      const activeHoursStart = await getConfigValue('activeHoursStart');
+      const activeHoursEnd = await getConfigValue('activeHoursEnd');
+      const airportElevation = await getConfigValue('airportElevation');
 
       set({
-        boundary: boundary?.value || DEFAULT_BOUNDARY,
-        altitudeThreshold: altitudeThreshold?.value || ALTITUDE_THRESHOLD,
-        activeHoursStart: activeHoursStart?.value || ACTIVE_HOURS_START,
-        activeHoursEnd: activeHoursEnd?.value || ACTIVE_HOURS_END,
-        airportElevation: airportElevation?.value || null,
+        boundary: boundary || DEFAULT_BOUNDARY,
+        altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
+        activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
+        activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
+        airportElevation: airportElevation || null,
         isLoading: false,
         error: null,
       });
@@ -36,7 +53,7 @@ export const useConfigStore = create((set) => ({
 
   setBoundary: async (boundary) => {
     try {
-      await db.config.put({ key: 'boundary', value: boundary, updatedAt: Date.now() });
+      await setConfigValue('boundary', boundary);
       set({ boundary, error: null });
     } catch (error) {
       set({ error: error.message });
@@ -45,7 +62,7 @@ export const useConfigStore = create((set) => ({
 
   setAltitudeThreshold: async (threshold) => {
     try {
-      await db.config.put({ key: 'altitudeThreshold', value: threshold, updatedAt: Date.now() });
+      await setConfigValue('altitudeThreshold', threshold);
       set({ altitudeThreshold: threshold, error: null });
     } catch (error) {
       set({ error: error.message });
@@ -54,8 +71,8 @@ export const useConfigStore = create((set) => ({
 
   setActiveHours: async (start, end) => {
     try {
-      await db.config.put({ key: 'activeHoursStart', value: start, updatedAt: Date.now() });
-      await db.config.put({ key: 'activeHoursEnd', value: end, updatedAt: Date.now() });
+      await setConfigValue('activeHoursStart', start);
+      await setConfigValue('activeHoursEnd', end);
       set({ activeHoursStart: start, activeHoursEnd: end, error: null });
     } catch (error) {
       set({ error: error.message });
@@ -64,7 +81,7 @@ export const useConfigStore = create((set) => ({
 
   setAirportElevation: async (elevation) => {
     try {
-      await db.config.put({ key: 'airportElevation', value: elevation, updatedAt: Date.now() });
+      await setConfigValue('airportElevation', elevation);
       set({ airportElevation: elevation, error: null });
     } catch (error) {
       set({ error: error.message });

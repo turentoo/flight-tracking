@@ -1,3 +1,7 @@
+// Supabase Configuration
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 // API Configuration
 export const OPENSKY_API_URL = import.meta.env.VITE_OPENSKY_API_URL;
 export const OPENSKY_USERNAME = import.meta.env.VITE_OPENSKY_USERNAME || '';

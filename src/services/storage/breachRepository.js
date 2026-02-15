@@ -1,13 +1,35 @@
-import db from './db';
+import supabase from './db';
 import { formatDate } from '../../utils/timeHelpers';
+
+/**
+ * Map a JS camelCase breach object to Supabase snake_case columns
+ */
+const toRow = (breach) => ({
+  timestamp: breach.timestamp,
+  date: breach.date,
+  hour: breach.hour,
+  callsign: breach.callsign,
+  altitude: breach.altitude,
+  agl: breach.agl,
+  latitude: breach.latitude,
+  longitude: breach.longitude,
+  velocity: breach.velocity,
+  heading: breach.heading,
+  icao24: breach.icao24,
+});
 
 /**
  * Add a breach record to the database
  */
 export const addBreach = async (breach) => {
   try {
-    const id = await db.breaches.add(breach);
-    return { ...breach, id };
+    const { data, error } = await supabase
+      .from('breaches')
+      .insert(toRow(breach))
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error adding breach:', error);
     throw error;
@@ -19,7 +41,11 @@ export const addBreach = async (breach) => {
  */
 export const getAllBreaches = async () => {
   try {
-    return await db.breaches.toArray();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*');
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error fetching all breaches:', error);
     throw error;
@@ -31,7 +57,12 @@ export const getAllBreaches = async () => {
  */
 export const getBreachesForDate = async (date) => {
   try {
-    return await db.breaches.where('date').equals(date).toArray();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .eq('date', date);
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error fetching breaches for date:', error);
     throw error;
@@ -43,10 +74,13 @@ export const getBreachesForDate = async (date) => {
  */
 export const getBreachesForHour = async (date, hour) => {
   try {
-    return await db.breaches
-      .where('date').equals(date)
-      .and((breach) => breach.hour === hour)
-      .toArray();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .eq('date', date)
+      .eq('hour', hour);
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error fetching breaches for hour:', error);
     throw error;
@@ -73,9 +107,13 @@ export const getBreachesForCurrentHour = async () => {
  */
 export const getBreachesInRange = async (startDate, endDate) => {
   try {
-    return await db.breaches
-      .where('date').between(startDate, endDate, true, true)
-      .toArray();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate);
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error fetching breaches in range:', error);
     throw error;
@@ -87,9 +125,12 @@ export const getBreachesInRange = async (startDate, endDate) => {
  */
 export const getBreachesByCallsign = async (callsign) => {
   try {
-    return await db.breaches
-      .where('callsign').equals(callsign)
-      .toArray();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .eq('callsign', callsign);
+    if (error) throw error;
+    return data;
   } catch (error) {
     console.error('Error fetching breaches by callsign:', error);
     throw error;
@@ -101,10 +142,13 @@ export const getBreachesByCallsign = async (callsign) => {
  */
 export const getBreachCountByDate = async () => {
   try {
-    const breaches = await getAllBreaches();
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('date');
+    if (error) throw error;
     const countByDate = {};
-    breaches.forEach((breach) => {
-      countByDate[breach.date] = (countByDate[breach.date] || 0) + 1;
+    data.forEach((row) => {
+      countByDate[row.date] = (countByDate[row.date] || 0) + 1;
     });
     return countByDate;
   } catch (error) {
@@ -138,7 +182,23 @@ export const getBreachCountByHour = async (date) => {
  */
 export const getLastBreachForKey = async (key) => {
   try {
-    return await db.lastBreaches.where('callsignAltitudeKey').equals(key).first();
+    const { data, error } = await supabase
+      .from('last_breaches')
+      .select('*')
+      .eq('callsign_altitude_key', key)
+      .maybeSingle();
+    if (error) throw error;
+    // Map snake_case back to camelCase for callers
+    if (data) {
+      return {
+        id: data.id,
+        callsignAltitudeKey: data.callsign_altitude_key,
+        lastRecordedAt: data.last_recorded_at,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      };
+    }
+    return null;
   } catch (error) {
     console.error('Error fetching last breach:', error);
     throw error;
@@ -150,22 +210,21 @@ export const getLastBreachForKey = async (key) => {
  */
 export const updateLastBreach = async (key, lastRecordedAt, latitude, longitude) => {
   try {
-    const existing = await getLastBreachForKey(key);
-    if (existing) {
-      await db.lastBreaches.update(existing.id, {
-        lastRecordedAt,
-        latitude,
-        longitude,
-      });
-      return existing.id;
-    } else {
-      return await db.lastBreaches.add({
-        callsignAltitudeKey: key,
-        lastRecordedAt,
-        latitude,
-        longitude,
-      });
-    }
+    const { data, error } = await supabase
+      .from('last_breaches')
+      .upsert(
+        {
+          callsign_altitude_key: key,
+          last_recorded_at: lastRecordedAt,
+          latitude,
+          longitude,
+        },
+        { onConflict: 'callsign_altitude_key' }
+      )
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data.id;
   } catch (error) {
     console.error('Error updating last breach:', error);
     throw error;
@@ -177,9 +236,74 @@ export const updateLastBreach = async (key, lastRecordedAt, latitude, longitude)
  */
 export const deleteAllBreaches = async () => {
   try {
-    await db.breaches.clear();
+    const { error } = await supabase
+      .from('breaches')
+      .delete()
+      .neq('id', 0);
+    if (error) throw error;
   } catch (error) {
     console.error('Error deleting all breaches:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get breaches for a specific month (year: number, month: 1-12)
+ */
+export const getBreachesForMonth = async (year, month) => {
+  try {
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const { data, error } = await supabase
+      .from('breaches')
+      .select('*')
+      .like('date', `${monthStr}%`)
+      .order('timestamp', { ascending: false });
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching breaches for month:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get monthly breach stats for the last N months.
+ * Returns { months: [{ year, month, label, count }], avg, max, total, min }
+ */
+export const getMonthlyStats = async (numMonths = 6) => {
+  try {
+    const now = new Date();
+    const months = [];
+    for (let i = numMonths - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        label: d.toLocaleString('default', { month: 'short' }),
+      });
+    }
+
+    const counts = [];
+    for (const m of months) {
+      const monthStr = `${m.year}-${String(m.month).padStart(2, '0')}`;
+      const { count, error } = await supabase
+        .from('breaches')
+        .select('*', { count: 'exact', head: true })
+        .like('date', `${monthStr}%`);
+      if (error) throw error;
+      counts.push(count);
+      m.count = count;
+    }
+
+    const total = counts.reduce((s, c) => s + c, 0);
+    const nonZero = counts.filter((c) => c > 0);
+    const avg = nonZero.length > 0 ? Math.round(total / nonZero.length) : 0;
+    const max = counts.length > 0 ? Math.max(...counts) : 0;
+    const min = nonZero.length > 0 ? Math.min(...nonZero) : 0;
+
+    return { months, avg, max, total, min };
+  } catch (error) {
+    console.error('Error computing monthly stats:', error);
     throw error;
   }
 };
@@ -193,9 +317,11 @@ export const deleteBreachesOlderThan = async (days) => {
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffDateStr = formatDate(cutoffDate);
 
-    await db.breaches
-      .where('date').below(cutoffDateStr)
-      .delete();
+    const { error } = await supabase
+      .from('breaches')
+      .delete()
+      .lt('date', cutoffDateStr);
+    if (error) throw error;
   } catch (error) {
     console.error('Error deleting old breaches:', error);
     throw error;
