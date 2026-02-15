@@ -1,15 +1,20 @@
 import { create } from 'zustand';
 
 export const useUIStore = create((set) => ({
-  activeTab: 'map', // 'map', 'current', 'history'
+  activePage: 'overview', // 'overview', 'breach-history'
   selectedDate: null,
   selectedHour: null,
   showConfigPanel: false,
   showBreachDetail: false,
   selectedBreach: null,
 
+  setActivePage: (page) => {
+    set({ activePage: page });
+  },
+
+  // Keep activeTab as alias for backward compatibility
   setActiveTab: (tab) => {
-    set({ activeTab: tab });
+    set({ activePage: tab });
   },
 
   setSelectedDate: (date) => {

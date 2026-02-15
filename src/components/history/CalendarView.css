@@ -86,7 +86,7 @@
   padding: 6px 4px;
   border: 1px solid transparent;
   border-radius: 6px;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-card);
   cursor: default;
   transition: all 0.15s;
 }

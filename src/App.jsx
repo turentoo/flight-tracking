@@ -1,82 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useConfigStore } from './store/configStore';
 import { useUIStore } from './store/uiStore';
-import { useFlightStore } from './store/flightStore';
 import useTimeWindow from './hooks/useTimeWindow';
 import useFlightPolling from './hooks/useFlightPolling';
 import useBreachDetection from './hooks/useBreachDetection';
-import Header from './components/layout/Header';
-import StatusBar from './components/layout/StatusBar';
-import TabNavigation from './components/layout/TabNavigation';
-import ConfigPanel from './components/config/ConfigPanel';
-import FlightMap from './components/map/FlightMap';
+import Sidebar from './components/layout/Sidebar';
+import TopBar from './components/layout/TopBar';
+import OverviewPage from './components/pages/OverviewPage';
+import BreachHistoryPage from './components/pages/BreachHistoryPage';
 import BreachAlertBanner from './components/current/BreachAlertBanner';
-import CurrentHourPanel from './components/current/CurrentHourPanel';
-import HistoryView from './components/history/HistoryView';
+import ConfigPanel from './components/config/ConfigPanel';
 import { getAirportByICAO } from './services/api/ourAirportsClient';
 import { REFERENCE_AIRPORT_ICAO } from './utils/constants';
-import { formatAltitude, formatVelocity, formatHeading, formatCallsign } from './utils/formatters';
 import './App.css';
-
-function FlightTable() {
-  const flights = useFlightStore((s) => s.flights);
-  const groundElevation = useConfigStore((s) => s.airportElevation);
-
-  if (flights.length === 0) return null;
-
-  return (
-    <div className="flight-list">
-      <h3>Flights in Monitoring Area ({flights.length})</h3>
-      <div className="flight-table-wrap">
-        <table className="flight-table">
-          <thead>
-            <tr>
-              <th>Callsign</th>
-              <th>ICAO24</th>
-              <th>Altitude</th>
-              <th>AGL</th>
-              <th>Speed</th>
-              <th>Heading</th>
-              <th>Lat</th>
-              <th>Lon</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flights.map((f) => {
-              const altFeet = f.barometricAltitude != null ? f.barometricAltitude * 3.28084 : null;
-              const agl = altFeet != null && groundElevation != null ? altFeet - groundElevation : null;
-              return (
-                <tr key={f.icao24} className={f.onGround ? 'on-ground' : ''}>
-                  <td className="mono">{formatCallsign(f.callsign)}</td>
-                  <td className="mono">{f.icao24.toUpperCase()}</td>
-                  <td>{altFeet != null ? formatAltitude(altFeet) : 'N/A'}</td>
-                  <td>{agl != null ? formatAltitude(agl) : 'N/A'}</td>
-                  <td>{formatVelocity(f.velocity)}</td>
-                  <td>{formatHeading(f.trueTrack)}</td>
-                  <td>{f.latitude?.toFixed(4) ?? 'N/A'}</td>
-                  <td>{f.longitude?.toFixed(4) ?? 'N/A'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function MapTab() {
-  return (
-    <div className="map-tab">
-      <FlightMap />
-      <FlightTable />
-    </div>
-  );
-}
 
 function App() {
   const { loadConfig, setAirportElevation, isLoading } = useConfigStore();
-  const { activeTab, showConfigPanel, setShowConfigPanel } = useUIStore();
+  const { activePage, showConfigPanel, setShowConfigPanel } = useUIStore();
   const [appReady, setAppReady] = useState(false);
 
   const { isActive } = useTimeWindow();
@@ -133,17 +73,14 @@ function App() {
   return (
     <div className="app">
       <BreachAlertBanner onBreachRef={onBreachRef} />
-      <Header />
-      <StatusBar />
-      <TabNavigation />
-
-      <main className="app-main">
-        <div className="tab-content">
-          {activeTab === 'map' && <MapTab />}
-          {activeTab === 'current' && <CurrentHourPanel />}
-          {activeTab === 'history' && <HistoryView />}
-        </div>
-      </main>
+      <Sidebar />
+      <div className="main-area">
+        <TopBar />
+        <main className="main-content">
+          {activePage === 'overview' && <OverviewPage />}
+          {activePage === 'breach-history' && <BreachHistoryPage />}
+        </main>
+      </div>
 
       {showConfigPanel && (
         <div className="modal-overlay" onClick={() => setShowConfigPanel(false)}>

@@ -21,10 +21,10 @@ export default function ConfigPanel({ onClose }) {
   const { setBreaches, setCurrentHourBreaches } = useBreachStore();
 
   const [formData, setFormData] = useState({
-    latMin: boundary?.latMin || DEFAULT_BOUNDARY.latMin,
-    latMax: boundary?.latMax || DEFAULT_BOUNDARY.latMax,
-    lonMin: boundary?.lonMin || DEFAULT_BOUNDARY.lonMin,
-    lonMax: boundary?.lonMax || DEFAULT_BOUNDARY.lonMax,
+    latMin: String(boundary?.latMin ?? DEFAULT_BOUNDARY.latMin),
+    latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
+    lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
+    lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
     altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
     activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
     activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
@@ -35,31 +35,33 @@ export default function ConfigPanel({ onClose }) {
 
   useEffect(() => {
     setFormData({
-      latMin: boundary?.latMin || DEFAULT_BOUNDARY.latMin,
-      latMax: boundary?.latMax || DEFAULT_BOUNDARY.latMax,
-      lonMin: boundary?.lonMin || DEFAULT_BOUNDARY.lonMin,
-      lonMax: boundary?.lonMax || DEFAULT_BOUNDARY.lonMax,
+      latMin: String(boundary?.latMin ?? DEFAULT_BOUNDARY.latMin),
+      latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
+      lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
+      lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
       altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
       activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
       activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,
     });
   }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd]);
 
+  const isCoordField = (name) => ['latMin', 'latMax', 'lonMin', 'lonMax'].includes(name);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name.includes('Lat') || name.includes('Lon') ? parseFloat(value) : parseInt(value, 10),
+      [name]: isCoordField(name) ? value : parseInt(value, 10),
     }));
   };
 
   const handleSave = async () => {
     try {
       const newBoundary = {
-        latMin: formData.latMin,
-        latMax: formData.latMax,
-        lonMin: formData.lonMin,
-        lonMax: formData.lonMax,
+        latMin: parseFloat(formData.latMin),
+        latMax: parseFloat(formData.latMax),
+        lonMin: parseFloat(formData.lonMin),
+        lonMax: parseFloat(formData.lonMax),
       };
       await setBoundary(newBoundary);
       await setAltitudeThreshold(formData.altitudeThreshold);
@@ -72,10 +74,10 @@ export default function ConfigPanel({ onClose }) {
 
   const handleReset = () => {
     setFormData({
-      latMin: DEFAULT_BOUNDARY.latMin,
-      latMax: DEFAULT_BOUNDARY.latMax,
-      lonMin: DEFAULT_BOUNDARY.lonMin,
-      lonMax: DEFAULT_BOUNDARY.lonMax,
+      latMin: String(DEFAULT_BOUNDARY.latMin),
+      latMax: String(DEFAULT_BOUNDARY.latMax),
+      lonMin: String(DEFAULT_BOUNDARY.lonMin),
+      lonMax: String(DEFAULT_BOUNDARY.lonMax),
       altitudeThreshold: ALTITUDE_THRESHOLD,
       activeHoursStart: ACTIVE_HOURS_START,
       activeHoursEnd: ACTIVE_HOURS_END,

@@ -1,0 +1,16 @@
+.breach-history-page {
+  padding: 24px 32px;
+  max-width: 960px;
+}
+
+.page-title {
+  margin: 0 0 20px 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.breach-history-page .loading-text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

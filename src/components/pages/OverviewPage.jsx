@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
@@ -10,22 +11,159 @@ import { getCurrentHour, getHourRange } from '../../utils/timeHelpers';
 import { formatCallsign } from '../../utils/formatters';
 import { REFERENCE_AIRPORT_ICAO } from '../../utils/constants';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
-import BoundaryOverlay from '../map/BoundaryOverlay';
 import EmptyState from '../shared/EmptyState';
 import './OverviewPage.css';
+
+const BOUNDARY_STYLE = {
+  color: '#646cff',
+  weight: 3,
+  opacity: 1,
+  fillColor: '#646cff',
+  fillOpacity: 0.15,
+  dashArray: '6 4',
+};
+
+function createHandleIcon() {
+  return L.divIcon({
+    className: 'boundary-drag-handle',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  });
+}
+
+function EditableBoundary({ boundary, onBoundaryChange }) {
+  const map = useMap();
+  const rectRef = useRef(null);
+  const markersRef = useRef([]);
+  const debounceRef = useRef(null);
+
+  const updateHandles = useCallback((bounds) => {
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const positions = [
+      // corners: SW, NW, NE, SE
+      [sw.lat, sw.lng],
+      [ne.lat, sw.lng],
+      [ne.lat, ne.lng],
+      [sw.lat, ne.lng],
+      // edge midpoints: S, N, W, E
+      [(sw.lat + ne.lat) / 2, sw.lng],
+      [(sw.lat + ne.lat) / 2, ne.lng],
+      [sw.lat, (sw.lng + ne.lng) / 2],
+      [ne.lat, (sw.lng + ne.lng) / 2],
+    ];
+    markersRef.current.forEach((m, i) => {
+      m.setLatLng(positions[i]);
+    });
+  }, []);
+
+  const persistBoundary = useCallback((newBoundary) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      useConfigStore.getState().setBoundary(newBoundary);
+    }, 500);
+  }, []);
+
+  const handleDrag = useCallback((index) => {
+    return function () {
+      const pos = this.getLatLng();
+      const bounds = rectRef.current.getBounds();
+      let sw = bounds.getSouthWest();
+      let ne = bounds.getNorthEast();
+
+      // corners: 0=SW, 1=NW, 2=NE, 3=SE
+      // edges: 4=W, 5=E, 6=S, 7=N
+      switch (index) {
+        case 0: sw = L.latLng(pos.lat, pos.lng); break;
+        case 1: ne = L.latLng(pos.lat, ne.lng); sw = L.latLng(sw.lat, pos.lng); break;
+        case 2: ne = L.latLng(pos.lat, pos.lng); break;
+        case 3: sw = L.latLng(pos.lat, sw.lng); ne = L.latLng(ne.lat, pos.lng); break;
+        case 4: sw = L.latLng(sw.lat, pos.lng); break; // W edge
+        case 5: ne = L.latLng(ne.lat, pos.lng); break; // E edge
+        case 6: sw = L.latLng(pos.lat, sw.lng); break; // S edge
+        case 7: ne = L.latLng(pos.lat, ne.lng); break; // N edge
+      }
+
+      const newBounds = L.latLngBounds(sw, ne);
+      rectRef.current.setBounds(newBounds);
+      updateHandles(newBounds);
+
+      const newBoundary = {
+        latMin: Math.min(sw.lat, ne.lat),
+        latMax: Math.max(sw.lat, ne.lat),
+        lonMin: Math.min(sw.lng, ne.lng),
+        lonMax: Math.max(sw.lng, ne.lng),
+      };
+      onBoundaryChange(newBoundary);
+      persistBoundary(newBoundary);
+    };
+  }, [onBoundaryChange, persistBoundary, updateHandles]);
+
+  useEffect(() => {
+    if (!boundary) return;
+
+    const bounds = L.latLngBounds(
+      [boundary.latMin, boundary.lonMin],
+      [boundary.latMax, boundary.lonMax]
+    );
+
+    // Create rectangle
+    const rect = L.rectangle(bounds, BOUNDARY_STYLE).addTo(map);
+    rectRef.current = rect;
+
+    // Create 8 drag handles (4 corners + 4 edge midpoints)
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const positions = [
+      [sw.lat, sw.lng],
+      [ne.lat, sw.lng],
+      [ne.lat, ne.lng],
+      [sw.lat, ne.lng],
+      [(sw.lat + ne.lat) / 2, sw.lng],
+      [(sw.lat + ne.lat) / 2, ne.lng],
+      [sw.lat, (sw.lng + ne.lng) / 2],
+      [ne.lat, (sw.lng + ne.lng) / 2],
+    ];
+
+    const icon = createHandleIcon();
+    const markers = positions.map((pos, i) => {
+      const marker = L.marker(pos, { icon, draggable: true }).addTo(map);
+      marker.on('drag', handleDrag(i));
+      return marker;
+    });
+    markersRef.current = markers;
+
+    return () => {
+      rect.remove();
+      markers.forEach((m) => m.remove());
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []); // Only run on mount — handles sync via the second useEffect
+
+  // Sync rectangle when boundary changes externally (e.g. from config panel)
+  useEffect(() => {
+    if (!boundary || !rectRef.current) return;
+    const bounds = L.latLngBounds(
+      [boundary.latMin, boundary.lonMin],
+      [boundary.latMax, boundary.lonMax]
+    );
+    rectRef.current.setBounds(bounds);
+    updateHandles(bounds);
+  }, [boundary, updateHandles]);
+
+  return null;
+}
 
 function BoundaryMiniMap() {
   const boundary = useConfigStore((s) => s.boundary);
   const setShowConfigPanel = useUIStore((s) => s.setShowConfigPanel);
   const center = useMemo(() => getBoundaryCenter(boundary), [boundary]);
+  const handleBoundaryChange = useCallback(() => {}, []);
 
   if (!boundary || !center) return null;
 
-  const coordLabel = `Map: ${boundary.lonMin},${boundary.latMin},${boundary.lonMax},${boundary.latMax}`;
-
   return (
     <div className="boundary-minimap">
-      <div className="boundary-minimap-label">{coordLabel}</div>
       <button
         className="boundary-edit-btn"
         onClick={() => setShowConfigPanel(true)}
@@ -36,16 +174,16 @@ function BoundaryMiniMap() {
       <MapContainer
         center={[center.latitude, center.longitude]}
         zoom={12}
-        zoomControl={false}
+        zoomControl={true}
         attributionControl={false}
-        dragging={false}
-        scrollWheelZoom={false}
+        dragging={true}
+        scrollWheelZoom={true}
         doubleClickZoom={false}
-        touchZoom={false}
+        touchZoom={true}
         style={{ width: '100%', height: '100%' }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <BoundaryOverlay boundary={boundary} />
+        <EditableBoundary boundary={boundary} onBoundaryChange={handleBoundaryChange} />
       </MapContainer>
     </div>
   );
