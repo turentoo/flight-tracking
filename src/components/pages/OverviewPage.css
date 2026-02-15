@@ -163,9 +163,6 @@
   border-bottom: none;
 }
 
-.data-table tbody tr:first-child td {
-  background-color: rgba(125, 187, 255, 0.2);
-}
 
 .data-table tbody tr:hover {
   background-color: var(--bg-secondary);
@@ -252,11 +249,11 @@
   transition: background-color 0.15s;
 }
 
-.breach-row-selected {
+.breach-row-selected td {
   background-color: var(--accent-light);
 }
 
-.breach-row-selected:hover {
+.breach-row-selected:hover td {
   background-color: var(--accent-light);
 }
 
