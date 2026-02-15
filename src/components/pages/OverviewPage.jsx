@@ -35,7 +35,7 @@ function BoundaryMiniMap() {
       </button>
       <MapContainer
         center={[center.latitude, center.longitude]}
-        zoom={13}
+        zoom={12}
         zoomControl={false}
         attributionControl={false}
         dragging={false}

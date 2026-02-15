@@ -2,10 +2,10 @@ import { Rectangle, Tooltip } from 'react-leaflet';
 
 const BOUNDARY_STYLE = {
   color: '#646cff',
-  weight: 2,
-  opacity: 0.8,
+  weight: 3,
+  opacity: 1,
   fillColor: '#646cff',
-  fillOpacity: 0.06,
+  fillOpacity: 0.15,
   dashArray: '6 4',
 };
 
