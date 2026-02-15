@@ -7,8 +7,8 @@ export const ADSB_FI_API_URL = import.meta.env.VITE_ADSB_FI_API_URL || 'https://
 export const OURAIRPORTS_API_URL = import.meta.env.VITE_OURAIRPORTS_API_URL;
 
 // Polling Configuration
-export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '20000', 10);
-export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '20000', 10);
+export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '30000', 10);
+export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '30000', 10);
 
 // Altitude & Breach Configuration
 export const ALTITUDE_THRESHOLD = parseInt(import.meta.env.VITE_ALTITUDE_THRESHOLD || '1300', 10);

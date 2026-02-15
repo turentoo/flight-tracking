@@ -37,7 +37,7 @@ const parseCSVLine = (line) => {
 export const getAirportElevation = async (icao) => {
   try {
     // OurAirports data is in CSV format - fetch airports.csv
-    const response = await client.get('/data/airports.csv');
+    const response = await client.get('/airports.csv');
 
     if (!response.data) {
       throw new Error('No data returned from OurAirports');
@@ -74,7 +74,7 @@ export const getAirportElevation = async (icao) => {
  */
 export const getAirportByICAO = async (icao) => {
   try {
-    const response = await client.get('/data/airports.csv');
+    const response = await client.get('/airports.csv');
 
     if (!response.data) {
       throw new Error('No data returned from OurAirports');
@@ -118,7 +118,7 @@ export const getAirportByICAO = async (icao) => {
  */
 export const checkDataAccessibility = async () => {
   try {
-    const response = await client.head('/data/airports.csv');
+    const response = await client.head('/airports.csv');
     return response.status === 200;
   } catch (error) {
     console.error('Error checking OurAirports accessibility:', error);

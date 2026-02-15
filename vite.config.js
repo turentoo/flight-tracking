@@ -3,6 +3,15 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/adsb-api': {
+        target: 'https://opendata.adsb.fi',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/adsb-api/, '/api'),
+      },
+    },
+  },
   build: {
     rollupOptions: {
       output: {
