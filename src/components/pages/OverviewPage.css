@@ -356,6 +356,81 @@
 
 .report-button:hover {
   opacity: 0.85;
+  color: var(--bg-card);
+}
+
+/* Report toggle */
+.report-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.report-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.report-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.report-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--border-color);
+  border-radius: 20px;
+  transition: background-color 0.2s;
+}
+
+.report-toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.report-toggle input:checked + .report-toggle-slider {
+  background-color: var(--accent, #646cff);
+}
+
+.report-toggle input:checked + .report-toggle-slider::before {
+  transform: translateX(16px);
+}
+
+.report-toggle input:disabled + .report-toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.report-toggle-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Reported pill badge */
+.reported-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a7a3a;
+  background-color: rgba(113, 221, 140, 0.25);
+  border-radius: 10px;
+  line-height: 1.4;
 }
 
 /* Loading */

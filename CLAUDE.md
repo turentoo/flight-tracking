@@ -101,8 +101,8 @@ Two-column layout at top: main content (left) + Alert explorer (right, 280px sti
 
 1. Current hour bar chart (5-min intervals) with breach count legend
 2. **Editable boundary mini map** — `L.Rectangle` with 8 draggable handles (4 corners + 4 edge midpoints) built with native Leaflet API (no leaflet-draw). Handles resize the rectangle on drag; boundary persists to Supabase via `configStore.setBoundary()` with 500ms debounce. Map has zoom/pan enabled. Pencil button opens ConfigPanel for manual coordinate entry. The `EditableBoundary` component lives inside `OverviewPage.jsx`; the main `FlightMap` uses a separate read-only `BoundaryOverlay`.
-3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background (applied at `td` level to override any other row styles). Clicking again deselects. Selection is shared across all tables (current hour + monthly).
-4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected. **Report button** at bottom opens a `mailto:` link with pre-filled noise complaint email (subject, body with flight number, altitude, timestamp). Built via `buildReportMailto()` in `OverviewPage.jsx`.
+3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp, Status) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background (applied at `td` level to override any other row styles). Clicking again deselects. Selection is shared across all tables (current hour + monthly). Status column shows a green "Reported" pill badge when `breach.reported` is true.
+4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected. **Report button** at bottom opens a `mailto:` link with pre-filled noise complaint email (subject, body with flight number, altitude, timestamp). Built via `buildReportMailto()` in `OverviewPage.jsx`. **Reported toggle** below the Report button marks a breach as reported via `setBreachReported()` in `breachRepository.js`; when ON, the Report button hides (already sent) and tables show the "Reported" pill. Toggle state persists to Supabase `breaches.reported` column. `breachStore.updateBreachReported()` updates the store; a `reportedUpdates` map in `OverviewPage` propagates changes to `MonthlyBreachesTable`'s local state.
 5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
 6. Monthly bar chart (last 6 months)
 7. Month/year selector dropdowns
@@ -131,7 +131,7 @@ User configuration is stored in Supabase and editable via the Settings panel (ge
 
 Storage uses Supabase PostgreSQL (no local IndexedDB). Three tables:
 
-- **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, created_at). Indexed on date, callsign, timestamp.
+- **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, reported, created_at). `reported` is BOOLEAN DEFAULT FALSE — tracks whether a noise complaint has been filed. Indexed on date, callsign, timestamp.
 - **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, airportElevation.
 - **last_breaches** — Duplicate prevention (callsign_altitude_key UNIQUE, last_recorded_at, latitude, longitude).
 

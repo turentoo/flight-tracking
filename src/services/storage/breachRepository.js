@@ -232,6 +232,22 @@ export const updateLastBreach = async (key, lastRecordedAt, latitude, longitude)
 };
 
 /**
+ * Update the reported status of a breach
+ */
+export const setBreachReported = async (id, reported) => {
+  try {
+    const { error } = await supabase
+      .from('breaches')
+      .update({ reported })
+      .eq('id', id);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating breach reported status:', error);
+    throw error;
+  }
+};
+
+/**
  * Delete all breaches (reset database)
  */
 export const deleteAllBreaches = async () => {

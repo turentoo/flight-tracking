@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
-import { getBreachesForMonth, getMonthlyStats } from '../../services/storage/breachRepository';
+import { getBreachesForMonth, getMonthlyStats, setBreachReported } from '../../services/storage/breachRepository';
 import { getCurrentHour, getHourRange } from '../../utils/timeHelpers';
 import { formatCallsign } from '../../utils/formatters';
 import { REFERENCE_AIRPORT_ICAO } from '../../utils/constants';
@@ -247,7 +247,9 @@ function buildReportMailto(breach) {
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function AlertExplorer({ breach, boundary }) {
+function AlertExplorer({ breach, boundary, onReportedChange }) {
+  const [toggling, setToggling] = useState(false);
+
   if (!breach) {
     return (
       <div className="alert-explorer">
@@ -258,6 +260,20 @@ function AlertExplorer({ breach, boundary }) {
   }
 
   const hasCoords = breach.latitude != null && breach.longitude != null;
+  const isReported = !!breach.reported;
+
+  const handleToggleReported = async () => {
+    setToggling(true);
+    try {
+      const newValue = !isReported;
+      await setBreachReported(breach.id, newValue);
+      onReportedChange(breach.id, newValue);
+    } catch (err) {
+      console.error('Failed to update reported status:', err);
+    } finally {
+      setToggling(false);
+    }
+  };
 
   return (
     <div className="alert-explorer">
@@ -343,18 +359,32 @@ function AlertExplorer({ breach, boundary }) {
           <div className="alert-detail-label">Altitude</div>
         </div>
       </div>
-      <a
-        className="report-button"
-        href={buildReportMailto(breach)}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-          <polyline points="22,6 12,13 2,6" />
-        </svg>
-        Report
-      </a>
+      {!isReported && (
+        <a
+          className="report-button"
+          href={buildReportMailto(breach)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+            <polyline points="22,6 12,13 2,6" />
+          </svg>
+          Report
+        </a>
+      )}
+      <div className="report-toggle-container">
+        <label className="report-toggle">
+          <input
+            type="checkbox"
+            checked={isReported}
+            onChange={handleToggleReported}
+            disabled={toggling}
+          />
+          <span className="report-toggle-slider" />
+        </label>
+        <span className="report-toggle-label">Reported</span>
+      </div>
     </div>
   );
 }
@@ -437,6 +467,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
             <th>Airport</th>
             <th>Altitude, ft</th>
             <th>Timestamp</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -451,6 +482,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
               <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
               <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
               <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
+              <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
             </tr>
           ))}
         </tbody>
@@ -517,7 +549,7 @@ function MonthlyChart({ months }) {
   );
 }
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -533,13 +565,20 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
     return () => { cancelled = true; };
   }, [year, month]);
 
+  const displayBreaches = useMemo(() => {
+    if (!reportedUpdates || Object.keys(reportedUpdates).length === 0) return breaches;
+    return breaches.map((b) =>
+      Object.prototype.hasOwnProperty.call(reportedUpdates, b.id) ? { ...b, reported: reportedUpdates[b.id] } : b
+    );
+  }, [breaches, reportedUpdates]);
+
   const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
 
   if (loading) {
     return <div className="card"><p className="loading-text">Loading...</p></div>;
   }
 
-  if (breaches.length === 0) {
+  if (displayBreaches.length === 0) {
     return (
       <div className="card">
         <h3 className="card-title">Breaches by month</h3>
@@ -550,7 +589,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
 
   // Group by date
   const grouped = {};
-  breaches.forEach((b) => {
+  displayBreaches.forEach((b) => {
     if (!grouped[b.date]) grouped[b.date] = [];
     grouped[b.date].push(b);
   });
@@ -567,6 +606,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
             <th>Airport</th>
             <th>Altitude, ft</th>
             <th>Timestamp</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -575,7 +615,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
             const dateLabel = format(dateObj, 'd MMMM yyyy');
             return [
               <tr key={`header-${date}`} className="date-group-header">
-                <td colSpan={5}>{dateLabel}</td>
+                <td colSpan={6}>{dateLabel}</td>
               </tr>,
               ...grouped[date].map((b) => (
                 <tr
@@ -588,6 +628,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect }) {
                   <td>{REFERENCE_AIRPORT_ICAO.replace('EG', '')}</td>
                   <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
                   <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
+                  <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
                 </tr>
               )),
             ];
@@ -603,6 +644,7 @@ export default function OverviewPage() {
   const boundary = useConfigStore((s) => s.boundary);
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
+  const [reportedUpdates, setReportedUpdates] = useState({});
 
   // Month/year selector state
   const now = new Date();
@@ -671,9 +713,18 @@ export default function OverviewPage() {
             month={selectedMonth}
             selectedId={selectedBreach?.id}
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
+            reportedUpdates={reportedUpdates}
           />
         </div>
-        <AlertExplorer breach={selectedBreach} boundary={boundary} />
+        <AlertExplorer
+          breach={selectedBreach}
+          boundary={boundary}
+          onReportedChange={(id, reported) => {
+            useBreachStore.getState().updateBreachReported(id, reported);
+            setSelectedBreach((prev) => prev && prev.id === id ? { ...prev, reported } : prev);
+            setReportedUpdates((prev) => ({ ...prev, [id]: reported }));
+          }}
+        />
       </div>
     </div>
   );
