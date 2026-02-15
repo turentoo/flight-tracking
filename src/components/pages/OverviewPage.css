@@ -335,6 +335,29 @@
   margin-top: 0;
 }
 
+.report-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  margin-top: 16px;
+  background-color: var(--text-primary);
+  color: var(--bg-card);
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.report-button:hover {
+  opacity: 0.85;
+}
+
 /* Loading */
 .loading-text {
   color: var(--text-muted);

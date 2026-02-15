@@ -221,6 +221,32 @@ function AlertMapFit({ lat, lng, boundary }) {
   return null;
 }
 
+function buildReportMailto(breach) {
+  const timestamp = format(new Date(breach.timestamp), 'd MMM yyyy HH:mm:ss');
+  const altitude = breach.altitude != null ? Math.round(breach.altitude) : 'N/A';
+  const callsign = formatCallsign(breach.callsign);
+
+  const subject = `Noise Complaint - Aircraft Below Restricted Altitude - ${callsign} - ${timestamp}`;
+  const body = [
+    `Hello,`,
+    ``,
+    `I am writing to formally log a complaint regarding a flight ${callsign} operating out of your aerodrome at ${timestamp}.`,
+    ``,
+    `Based on data from flight tracking, the aircraft in question was flying over Radlett at an altitude of ${altitude}ft, which is significantly below the mandatory 1300ft requirement outlined in your noise abatement procedures for circuits to the north.`,
+    ``,
+    `This caused considerable noise disturbance at my property at your address.`,
+    ``,
+    `Given that your previous response indicated confidence that procedures were being followed, I request a formal investigation into this specific flight to understand why it failed to adhere to the required altitude restriction.`,
+    ``,
+    `I look forward to your response regarding this matter.`,
+    `Best wishes,`,
+    `Your Name`,
+    `your address`,
+  ].join('\n');
+
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 function AlertExplorer({ breach, boundary }) {
   if (!breach) {
     return (
@@ -317,6 +343,18 @@ function AlertExplorer({ breach, boundary }) {
           <div className="alert-detail-label">Altitude</div>
         </div>
       </div>
+      <a
+        className="report-button"
+        href={buildReportMailto(breach)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+          <polyline points="22,6 12,13 2,6" />
+        </svg>
+        Report
+      </a>
     </div>
   );
 }

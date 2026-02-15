@@ -101,8 +101,8 @@ Two-column layout at top: main content (left) + Alert explorer (right, 280px sti
 
 1. Current hour bar chart (5-min intervals) with breach count legend
 2. **Editable boundary mini map** — `L.Rectangle` with 8 draggable handles (4 corners + 4 edge midpoints) built with native Leaflet API (no leaflet-draw). Handles resize the rectangle on drag; boundary persists to Supabase via `configStore.setBoundary()` with 500ms debounce. Map has zoom/pan enabled. Pencil button opens ConfigPanel for manual coordinate entry. The `EditableBoundary` component lives inside `OverviewPage.jsx`; the main `FlightMap` uses a separate read-only `BoundaryOverlay`.
-3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background. Clicking again deselects.
-4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected.
+3. Breaches table (Flight number, Coordinates, Airport, Altitude, Timestamp) — rows are **clickable** to select a breach for the Alert explorer. Selected row highlighted with `--accent-light` background (applied at `td` level to override any other row styles). Clicking again deselects. Selection is shared across all tables (current hour + monthly).
+4. **Alert explorer** (right column) — shows selected breach details: flight callsign, airport, timestamp, coordinates, a small Leaflet map with dashed blue border and marker at breach location, and altitude. SVG icons in purple-tinted rounded backgrounds. Empty state shown when no row selected. **Report button** at bottom opens a `mailto:` link with pre-filled noise complaint email (subject, body with flight number, altitude, timestamp). Built via `buildReportMailto()` in `OverviewPage.jsx`.
 5. "Past breaches" section with 6-month stat cards (Avg/Max/Total/Min per month)
 6. Monthly bar chart (last 6 months)
 7. Month/year selector dropdowns
@@ -120,8 +120,7 @@ Environment variables in `.env.local`:
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — Supabase publishable (anon) key
 - `VITE_ADSB_FI_API_URL` — ADSB.fi API base URL (default: `https://opendata.adsb.fi/api`)
-- `VITE_POLLING_INTERVAL` — Normal polling interval (60000ms)
-- `VITE_ACTIVE_POLLING_INTERVAL` — Active polling interval (20000ms)
+- `VITE_POLLING_INTERVAL` — Polling interval (30000ms default)
 - `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet AGL (1300)
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
@@ -148,7 +147,7 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 
 - **AGL (Above Ground Level):** `barometric_altitude - ground_elevation`. Ground elevation fetched from OurAirports for Radlett Aerodrome (EGTR, ~300ft AMSL).
 - **Breach:** Flight with AGL < 1300ft within the monitoring boundary during operating hours.
-- **Duplicate prevention:** Same callsign+altitude combo not re-recorded within 60s.
+- **Duplicate prevention:** Same callsign not re-recorded within 24 hours (one breach per aircraft per day).
 - **Operating hours:** 9am–7pm local time. Polling stops outside this window.
 
 ## Theme & Design System
@@ -160,7 +159,7 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - **Border radius**: 20px for cards/stat cards, 12px for nav items/badges, 8px for icon backgrounds
 - **Stat cards**: Flat colored backgrounds alternating `rgba(125,187,255,0.2)` (blue) and `rgba(184,153,235,0.2)` (purple), no left border
 - **Chart palette**: `--chart-1: #6BE6D3` (teal), `--chart-2: #000000` (black), `--chart-3: #7DBBFF` (blue), `--chart-4: #B899EB` (purple), `--chart-5: #71DD8C` (green), `--chart-6: #A0BCE8` (light blue)
-- **Tables**: 12px font, first data row highlighted with blue tint `rgba(125,187,255,0.2)`
+- **Tables**: 12px font, no automatic first-row highlight (selection-only highlighting via `breach-row-selected`)
 - **Font sizes**: 12px (tables, labels), 14px (section headers, nav items, stat labels), 24px (stat values)
 - CSS variables: `--bg-primary`, `--bg-card`, `--bg-secondary`, `--text-primary`, `--accent`, `--chart-1` through `--chart-6`, `--stat-card-blue/purple`
 
@@ -174,6 +173,15 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - Services organized by concern: `api/`, `storage/`, `calculations/`
 - Pages in `src/components/pages/`, layout in `src/components/layout/`
 - Reusable shared components in `src/components/shared/`
+
+## ADSB.fi Integration
+
+- **API**: `https://opendata.adsb.fi/api` (free, no auth required)
+- **Endpoint**: `/v2/lat/{lat}/lon/{lon}/dist/{nm}` — queries by center + radius in nautical miles
+- **CORS**: In dev, Vite proxies `/adsb-api` → `https://opendata.adsb.fi/api` (configured in `vite.config.js`)
+- **Rate limiting**: Client-side 10s minimum between requests; exponential backoff on 429 (60s base, doubling)
+- **Unit conversion**: `flightClient.js` converts ADSB.fi units (feet, knots, ft/min) → internal units (meters, m/s) so downstream code (breach detection, FlightMarker) is unchanged
+- **Response field**: v2 API returns aircraft in `response.data.aircraft` (not `.ac`)
 
 ## Design
 
