@@ -50,8 +50,8 @@ Best wishes,
 Your Name
 your address`;
 
-// Duplicate prevention window (ms) — 24 hours, so a callsign is recorded at most once per day
-export const DUPLICATE_PREVENTION_WINDOW = 86400000;
+// Duplicate prevention window (ms) — 10 minutes, so repeat circuit breaches are captured
+export const DUPLICATE_PREVENTION_WINDOW = 600000;
 
 // Date format for storage
 export const DATE_FORMAT = 'yyyy-MM-dd';

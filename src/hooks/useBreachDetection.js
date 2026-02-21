@@ -102,9 +102,11 @@ export default function useBreachDetection(isActive) {
         if (altMeters == null) continue;
         const altFeet = altMeters * M_TO_FT;
 
-        // Calculate AGL.
+        // Breach check is on barometric altitude directly (no QFE correction).
+        if (!isAltitudeBreach(altFeet, altitudeThreshold)) continue;
+
+        // AGL stored for reference only.
         const agl = calculateAGL(altFeet, groundElevation);
-        if (!isAltitudeBreach(agl, altitudeThreshold)) continue;
 
         // --- This flight is a breach candidate ---
 
