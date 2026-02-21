@@ -476,6 +476,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
         <thead>
           <tr>
             <th>Flight number</th>
+            <th>Type</th>
             <th>Coordinates</th>
             <th>Airport</th>
             <th>Altitude, ft</th>
@@ -491,6 +492,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
               onClick={() => onSelect && onSelect(b)}
             >
               <td>{formatCallsign(b.callsign)}</td>
+              <td>{b.aircraft_type || 'N/A'}</td>
               <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
               <td>{b.departure_airport || 'Unknown'}</td>
               <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
@@ -630,6 +632,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
         <thead>
           <tr>
             <th>Flight number</th>
+            <th>Type</th>
             <th>Coordinates</th>
             <th>Airport</th>
             <th>Altitude, ft</th>
@@ -643,7 +646,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
             const dateLabel = format(dateObj, 'd MMMM yyyy');
             return [
               <tr key={`header-${date}`} className="date-group-header">
-                <td colSpan={6}>{dateLabel}</td>
+                <td colSpan={7}>{dateLabel}</td>
               </tr>,
               ...grouped[date].map((b) => (
                 <tr
@@ -652,6 +655,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
                   onClick={() => onSelect && onSelect(b)}
                 >
                   <td>{formatCallsign(b.callsign)}</td>
+                  <td>{b.aircraft_type || 'N/A'}</td>
                   <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
                   <td>{b.departure_airport || 'Unknown'}</td>
                   <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>

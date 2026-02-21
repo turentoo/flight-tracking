@@ -11,11 +11,13 @@ export default function ConfigPanel({ onClose }) {
     activeHoursEnd,
     reportEmail,
     airportFilter,
+    skipAirportTypes,
     setBoundary,
     setAltitudeThreshold,
     setActiveHours,
     setReportEmail,
     setAirportFilter,
+    setSkipAirportTypes,
   } = useConfigStore();
 
   const [formData, setFormData] = useState({
@@ -28,6 +30,7 @@ export default function ConfigPanel({ onClose }) {
     activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
     reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
     airportFilter: airportFilter || 'EGTR',
+    skipAirportTypes: skipAirportTypes || '',
   });
 
   useEffect(() => {
@@ -41,8 +44,9 @@ export default function ConfigPanel({ onClose }) {
       activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
       reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
       airportFilter: airportFilter || 'EGTR',
+      skipAirportTypes: skipAirportTypes || '',
     });
-  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter]);
+  }, [boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter, skipAirportTypes]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +66,7 @@ export default function ConfigPanel({ onClose }) {
       await setActiveHours(parseInt(formData.activeHoursStart, 10), parseInt(formData.activeHoursEnd, 10));
       await setReportEmail(formData.reportEmail);
       await setAirportFilter(formData.airportFilter);
+      await setSkipAirportTypes(formData.skipAirportTypes);
       onClose();
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -113,6 +118,12 @@ export default function ConfigPanel({ onClose }) {
             <div className="config-input">
               <label className="config-input-label">Airport</label>
               <input type="text" name="airportFilter" value={formData.airportFilter} onChange={handleChange} placeholder="EGTR" />
+            </div>
+          </div>
+          <div className="config-group-fields config-group-fields--row">
+            <div className="config-input">
+              <label className="config-input-label">Skip airport lookup for types</label>
+              <input type="text" name="skipAirportTypes" value={formData.skipAirportTypes} onChange={handleChange} placeholder="R22, P28A" />
             </div>
           </div>
         </div>

@@ -17,6 +17,7 @@ const toRow = (breach) => ({
   heading: breach.heading,
   icao24: breach.icao24,
   departure_airport: breach.departureAirport || null,
+  aircraft_type: breach.aircraftType || null,
 });
 
 /**

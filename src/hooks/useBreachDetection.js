@@ -48,6 +48,7 @@ export default function useBreachDetection(isActive) {
   const boundary = useConfigStore((s) => s.boundary);
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const groundElevation = useConfigStore((s) => s.airportElevation);
+  const skipAirportTypes = useConfigStore((s) => s.skipAirportTypes);
   const { addBreach: addBreachToStore, setCurrentHourBreaches, updateBreachAirport } = useBreachStore();
 
   // Track the last-processed update so we don't re-scan the same data.
@@ -86,6 +87,7 @@ export default function useBreachDetection(isActive) {
       const date = getCurrentDate();
       const hour = getCurrentHour();
       let newBreachCount = 0;
+      const processedCallsigns = new Set();
 
       for (const flight of flights) {
         // Skip flights on the ground.
@@ -107,6 +109,10 @@ export default function useBreachDetection(isActive) {
 
         // Duplicate prevention.
         const dedupKey = buildDedupKey(flight.callsign);
+
+        // Skip if already processed in this detection run (handles duplicate entries in a single API response).
+        if (processedCallsigns.has(dedupKey)) continue;
+        processedCallsigns.add(dedupKey);
         try {
           const last = await getLastBreachForKey(dedupKey);
           if (last && (now - last.lastRecordedAt) < DUPLICATE_PREVENTION_WINDOW) {
@@ -129,6 +135,7 @@ export default function useBreachDetection(isActive) {
           velocity: flight.velocity,
           heading: flight.trueTrack,
           icao24: flight.icao24,
+          aircraftType: flight.aircraftType,
         };
 
         try {
@@ -141,15 +148,21 @@ export default function useBreachDetection(isActive) {
           // Notify callback if registered.
           if (onBreachRef.current) onBreachRef.current(saved);
 
-          // Enrich with departure airport from FlightAware.
-          try {
-            const origin = await fetchDepartureAirport(flight.callsign);
-            if (origin) {
-              await updateBreachDepartureAirport(saved.id, origin);
-              updateBreachAirport(saved.id, origin);
+          // Enrich with departure airport from FlightAware (skip for configured aircraft types).
+          const skipTypes = skipAirportTypes
+            ? skipAirportTypes.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
+            : [];
+          const shouldSkip = flight.aircraftType && skipTypes.includes(flight.aircraftType.toUpperCase());
+          if (!shouldSkip) {
+            try {
+              const origin = await fetchDepartureAirport(flight.callsign);
+              if (origin) {
+                await updateBreachDepartureAirport(saved.id, origin);
+                updateBreachAirport(saved.id, origin);
+              }
+            } catch {
+              // FlightAware failure — keep breach, airport stays unknown.
             }
-          } catch {
-            // FlightAware failure — keep breach, airport stays unknown.
           }
         } catch (err) {
           console.error('Failed to record breach:', err);
@@ -170,6 +183,7 @@ export default function useBreachDetection(isActive) {
     boundary,
     altitudeThreshold,
     groundElevation,
+    skipAirportTypes,
     addBreachToStore,
     updateBreachAirport,
     refreshCurrentHour,

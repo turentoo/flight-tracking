@@ -46,6 +46,7 @@ const mapAircraftToFlight = (ac) => {
     squawk: ac.squawk ?? null,
     spi: ac.spi ?? false,
     categoryCode: ac.category ?? null,
+    aircraftType: ac.t ?? null,
   };
 };
 
