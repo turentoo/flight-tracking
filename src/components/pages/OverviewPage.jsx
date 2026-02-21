@@ -219,28 +219,22 @@ function AlertMapFit({ lat, lng, boundary }) {
   return null;
 }
 
-function buildReportMailto(breach, email) {
+function buildReportMailto(breach, email, altitudeThreshold, emailTemplate) {
   const timestamp = format(new Date(breach.timestamp), 'd MMM yyyy HH:mm:ss');
-  const altitude = breach.altitude != null ? Math.round(breach.altitude) : 'N/A';
+  const altitude = breach.altitude != null ? String(Math.round(breach.altitude)) : 'N/A';
+  const agl = breach.agl != null ? Math.round(breach.agl) : null;
+  const gap = agl != null && altitudeThreshold ? String(altitudeThreshold - agl) : 'N/A';
   const callsign = formatCallsign(breach.callsign);
+  const threshold = String(altitudeThreshold || 1300);
+
+  const body = emailTemplate
+    .replace(/\[flight_number\]/g, callsign)
+    .replace(/\[timestamp\]/g, timestamp)
+    .replace(/\[threshold\]/g, threshold)
+    .replace(/\[altitude\]/g, altitude)
+    .replace(/\[delta_altitude\]/g, gap);
 
   const subject = `Noise Complaint - Aircraft Below Restricted Altitude - ${callsign} - ${timestamp}`;
-  const body = [
-    `Hello,`,
-    ``,
-    `I am writing to formally log a complaint regarding a flight ${callsign} operating out of your aerodrome at ${timestamp}.`,
-    ``,
-    `Based on data from flight tracking, the aircraft in question was flying over Radlett at an altitude of ${altitude}ft, which is significantly below the mandatory 1300ft requirement outlined in your noise abatement procedures for circuits to the north.`,
-    ``,
-    `This caused considerable noise disturbance at my property at your address.`,
-    ``,
-    `Given that your previous response indicated confidence that procedures were being followed, I request a formal investigation into this specific flight to understand why it failed to adhere to the required altitude restriction.`,
-    ``,
-    `I look forward to your response regarding this matter.`,
-    `Best wishes,`,
-    `Your Name`,
-    `your address`,
-  ].join('\n');
 
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
@@ -248,6 +242,8 @@ function buildReportMailto(breach, email) {
 function AlertExplorer({ breach, boundary, onReportedChange }) {
   const [toggling, setToggling] = useState(false);
   const reportEmail = useConfigStore((s) => s.reportEmail);
+  const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
+  const emailTemplate = useConfigStore((s) => s.emailTemplate);
 
   if (!breach) {
     return (
@@ -361,7 +357,7 @@ function AlertExplorer({ breach, boundary, onReportedChange }) {
       {!isReported && (
         <a
           className="report-button"
-          href={buildReportMailto(breach, reportEmail)}
+          href={buildReportMailto(breach, reportEmail, altitudeThreshold, emailTemplate)}
           target="_blank"
           rel="noopener noreferrer"
         >

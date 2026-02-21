@@ -1,16 +1,8 @@
 import axios from 'axios';
-import { FLIGHTAWARE_API_URL, FLIGHTAWARE_API_KEY } from '../../utils/constants';
+import { FLIGHTAWARE_API_URL } from '../../utils/constants';
 
 // In dev, Vite proxies /flightaware-api → https://aeroapi.flightaware.com/aeroapi to avoid CORS.
 const baseURL = import.meta.env.DEV ? '/flightaware-api' : FLIGHTAWARE_API_URL;
-
-const client = axios.create({
-  baseURL,
-  timeout: 15000,
-  headers: {
-    'x-apikey': FLIGHTAWARE_API_KEY,
-  },
-});
 
 // Rate limit: FlightAware Personal plan = 10 req/min → 6s minimum between requests.
 let lastFetchTime = 0;
@@ -22,10 +14,11 @@ const MIN_INTERVAL_MS = 6000;
  * the ICAO origin airport code (e.g. "EGTR") or null.
  *
  * @param {string} callsign — flight callsign (e.g. "BAW123")
+ * @param {string} apiKey — FlightAware API key
  * @returns {Promise<string|null>} ICAO airport code or null
  */
-export const fetchDepartureAirport = async (callsign) => {
-  if (!FLIGHTAWARE_API_KEY) {
+export const fetchDepartureAirport = async (callsign, apiKey) => {
+  if (!apiKey) {
     console.warn('FlightAware API key not configured — skipping departure airport lookup');
     return null;
   }
@@ -41,7 +34,10 @@ export const fetchDepartureAirport = async (callsign) => {
 
   try {
     lastFetchTime = Date.now();
-    const response = await client.get(`/flights/${encodeURIComponent(callsign.trim())}`);
+    const response = await axios.get(`${baseURL}/flights/${encodeURIComponent(callsign.trim())}`, {
+      timeout: 15000,
+      headers: { 'x-apikey': apiKey },
+    });
     const flights = response.data?.flights;
     if (!flights || flights.length === 0) return null;
 

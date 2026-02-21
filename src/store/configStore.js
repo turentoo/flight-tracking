@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END, DEFAULT_REPORT_EMAIL } from '../utils/constants';
+import { DEFAULT_BOUNDARY, ALTITUDE_THRESHOLD, ACTIVE_HOURS_START, ACTIVE_HOURS_END, DEFAULT_REPORT_EMAIL, DEFAULT_EMAIL_TEMPLATE } from '../utils/constants';
 import supabase from '../services/storage/db';
 
 const getConfigValue = async (key) => {
@@ -27,6 +27,8 @@ export const useConfigStore = create((set) => ({
   reportEmail: DEFAULT_REPORT_EMAIL,
   airportFilter: '',
   skipAirportTypes: '',
+  flightAwareApiKey: '',
+  emailTemplate: DEFAULT_EMAIL_TEMPLATE,
   airportElevation: null,
   isLoading: false,
   error: null,
@@ -42,6 +44,8 @@ export const useConfigStore = create((set) => ({
       const reportEmail = await getConfigValue('reportEmail');
       const airportFilter = await getConfigValue('airportFilter');
       const skipAirportTypes = await getConfigValue('skipAirportTypes');
+      const flightAwareApiKey = await getConfigValue('flightAwareApiKey');
+      const emailTemplate = await getConfigValue('emailTemplate');
 
       set({
         boundary: boundary || DEFAULT_BOUNDARY,
@@ -51,6 +55,8 @@ export const useConfigStore = create((set) => ({
         reportEmail: reportEmail || DEFAULT_REPORT_EMAIL,
         airportFilter: airportFilter || '',
         skipAirportTypes: skipAirportTypes || '',
+        flightAwareApiKey: flightAwareApiKey || '',
+        emailTemplate: emailTemplate || DEFAULT_EMAIL_TEMPLATE,
         airportElevation: airportElevation || null,
         isLoading: false,
         error: null,
@@ -110,6 +116,24 @@ export const useConfigStore = create((set) => ({
     try {
       await setConfigValue('reportEmail', email);
       set({ reportEmail: email, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  setEmailTemplate: async (template) => {
+    try {
+      await setConfigValue('emailTemplate', template);
+      set({ emailTemplate: template, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  setFlightAwareApiKey: async (key) => {
+    try {
+      await setConfigValue('flightAwareApiKey', key);
+      set({ flightAwareApiKey: key, error: null });
     } catch (error) {
       set({ error: error.message });
     }

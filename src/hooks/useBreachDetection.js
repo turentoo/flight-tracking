@@ -49,6 +49,7 @@ export default function useBreachDetection(isActive) {
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const groundElevation = useConfigStore((s) => s.airportElevation);
   const skipAirportTypes = useConfigStore((s) => s.skipAirportTypes);
+  const flightAwareApiKey = useConfigStore((s) => s.flightAwareApiKey);
   const { addBreach: addBreachToStore, setCurrentHourBreaches, updateBreachAirport } = useBreachStore();
 
   // Track the last-processed update so we don't re-scan the same data.
@@ -155,7 +156,7 @@ export default function useBreachDetection(isActive) {
           const shouldSkip = flight.aircraftType && skipTypes.includes(flight.aircraftType.toUpperCase());
           if (!shouldSkip) {
             try {
-              const origin = await fetchDepartureAirport(flight.callsign);
+              const origin = await fetchDepartureAirport(flight.callsign, flightAwareApiKey);
               if (origin) {
                 await updateBreachDepartureAirport(saved.id, origin);
                 updateBreachAirport(saved.id, origin);
@@ -184,6 +185,7 @@ export default function useBreachDetection(isActive) {
     altitudeThreshold,
     groundElevation,
     skipAirportTypes,
+    flightAwareApiKey,
     addBreachToStore,
     updateBreachAirport,
     refreshCurrentHour,

@@ -161,6 +161,97 @@
   background-color: var(--text-primary);
 }
 
+/* Edit email template link */
+.edit-email-link {
+  background: none;
+  border: none;
+  color: var(--accent, #646cff);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  margin-top: -24px;
+}
+
+.edit-email-link:hover {
+  text-decoration: underline;
+}
+
+/* Email template editor */
+.email-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.email-editor-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.email-editor-back:hover {
+  color: var(--text-primary);
+}
+
+.email-editor-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.email-editor-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.email-editor-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--accent, #646cff);
+  background: rgba(100, 108, 255, 0.1);
+  border: 1px solid rgba(100, 108, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.email-editor-pill:hover {
+  background: rgba(100, 108, 255, 0.2);
+}
+
+.email-editor-textarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 16px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.email-editor-textarea:focus {
+  border-color: var(--accent, #646cff);
+}
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   .config-input,
@@ -175,5 +266,10 @@
 
   .config-save-btn {
     background-color: var(--text-primary);
+  }
+
+  .email-editor-textarea {
+    background: var(--bg-card);
+    border-color: var(--border-color);
   }
 }

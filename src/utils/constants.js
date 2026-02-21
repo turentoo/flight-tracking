@@ -8,7 +8,6 @@ export const OURAIRPORTS_API_URL = import.meta.env.VITE_OURAIRPORTS_API_URL;
 
 // FlightAware AeroAPI Configuration
 export const FLIGHTAWARE_API_URL = import.meta.env.VITE_FLIGHTAWARE_API_URL || 'https://aeroapi.flightaware.com/aeroapi';
-export const FLIGHTAWARE_API_KEY = import.meta.env.VITE_FLIGHTAWARE_API_KEY;
 
 // Polling Configuration
 export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '30000', 10);
@@ -34,6 +33,22 @@ export const DEFAULT_REPORT_EMAIL = 'your@email.com';
 
 // Radlett Aerodrome ICAO code (for elevation lookup)
 export const REFERENCE_AIRPORT_ICAO = 'EGTR';
+
+// Default email template for noise complaint reports
+export const DEFAULT_EMAIL_TEMPLATE = `Hello,
+
+I am writing to formally log a complaint regarding a flight [flight_number] operating out of your aerodrome at [timestamp].
+
+Based on data from flight tracking, the aircraft in question was flying over Radlett at an altitude of [altitude]ft, which is [delta_altitude]ft below the mandatory [threshold]ft requirement outlined in your noise abatement procedures for circuits to the north.
+
+This caused considerable noise disturbance at my property at your address.
+
+Given that your previous response indicated confidence that procedures were being followed, I request a formal investigation into this specific flight to understand why it failed to adhere to the required altitude restriction.
+
+I look forward to your response regarding this matter.
+Best wishes,
+Your Name
+your address`;
 
 // Duplicate prevention window (ms) — 24 hours, so a callsign is recorded at most once per day
 export const DUPLICATE_PREVENTION_WINDOW = 86400000;
