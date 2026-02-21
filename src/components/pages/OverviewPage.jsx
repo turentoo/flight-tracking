@@ -597,7 +597,7 @@ function SeverityDot({ agl, threshold }) {
 
 const PAGE_SIZE = 20;
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, airportFilter, altitudeThreshold }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, airportFilter, altitudeThreshold, deletedIds }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -616,6 +616,9 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
 
   const displayBreaches = useMemo(() => {
     let result = breaches;
+    if (deletedIds && deletedIds.size > 0) {
+      result = result.filter((b) => !deletedIds.has(b.id));
+    }
     if (reportedUpdates && Object.keys(reportedUpdates).length > 0) {
       result = result.map((b) =>
         Object.prototype.hasOwnProperty.call(reportedUpdates, b.id) ? { ...b, reported: reportedUpdates[b.id] } : b
@@ -625,7 +628,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
       result = result.filter((b) => b.departure_airport === airportFilter);
     }
     return result;
-  }, [breaches, reportedUpdates, airportFilter]);
+  }, [breaches, deletedIds, reportedUpdates, airportFilter]);
 
   // Reset to first page when filters or data change
   useEffect(() => { setPage(0); }, [displayBreaches]);
@@ -731,6 +734,7 @@ export default function OverviewPage() {
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
   const [reportedUpdates, setReportedUpdates] = useState({});
+  const [deletedIds, setDeletedIds] = useState(new Set());
   const [airportOnly, setAirportOnly] = useState(false);
 
   // Month/year selector state
@@ -815,6 +819,7 @@ export default function OverviewPage() {
             reportedUpdates={reportedUpdates}
             airportFilter={airportOnly ? airportFilter : null}
             altitudeThreshold={altitudeThreshold}
+            deletedIds={deletedIds}
           />
         </div>
         <AlertExplorer
@@ -828,6 +833,7 @@ export default function OverviewPage() {
           onDelete={async (id) => {
             await deleteBreach(id);
             useBreachStore.getState().removeBreach(id);
+            setDeletedIds((prev) => new Set(prev).add(id));
             setSelectedBreach(null);
           }}
         />
