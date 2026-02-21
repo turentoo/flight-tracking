@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useFlightStore } from '../store/flightStore';
 import { useConfigStore } from '../store/configStore';
 import { useBreachStore } from '../store/breachStore';
-import { calculateAGL, isAltitudeBreach } from '../services/calculations/aglCalculator';
+import { calculateAGL, isBelowThreshold } from '../services/calculations/aglCalculator';
 import { isWithinBoundary } from '../services/calculations/boundaryChecker';
 import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches, updateBreachDepartureAirport } from '../services/storage/breachRepository';
 import { fetchDepartureAirport } from '../services/api/flightAwareClient';
@@ -118,7 +118,7 @@ export default function useBreachDetection(isActive) {
         const altFeet = altMeters * M_TO_FT;
 
         // Breach check is on barometric altitude directly (no QFE correction).
-        if (!isAltitudeBreach(altFeet, altitudeThreshold)) {
+        if (!isBelowThreshold(altFeet, altitudeThreshold)) {
           console.debug(`[breach] ${cs}: in boundary at ${Math.round(altFeet)}ft — above threshold (${altitudeThreshold}ft)`);
           continue;
         }

@@ -17,16 +17,17 @@ export const calculateAGL = (barometricAltitude, groundElevation) => {
 };
 
 /**
- * Check if altitude is below threshold
- * @param {number} agl - AGL altitude in feet
+ * Check if barometric altitude is below threshold (breach condition).
+ * No QFE correction — compares raw barometric altitude directly.
+ * @param {number} altitude - Barometric altitude in feet
  * @param {number} threshold - Threshold in feet (default 1300ft)
- * @returns {boolean} True if AGL is below threshold (breach condition)
+ * @returns {boolean} True if altitude is below threshold
  */
-export const isAltitudeBreach = (agl, threshold = 1300) => {
-  if (agl === null || agl === undefined) {
+export const isBelowThreshold = (altitude, threshold = 1300) => {
+  if (altitude === null || altitude === undefined) {
     return false;
   }
-  return agl < threshold;
+  return altitude < threshold;
 };
 
 /**
@@ -34,7 +35,7 @@ export const isAltitudeBreach = (agl, threshold = 1300) => {
  */
 export const formatAGLData = (barometricAltitude, groundElevation, threshold = 1300) => {
   const agl = calculateAGL(barometricAltitude, groundElevation);
-  const isBreach = isAltitudeBreach(agl, threshold);
+  const isBreach = isBelowThreshold(barometricAltitude, threshold);
 
   return {
     altitude: barometricAltitude,
