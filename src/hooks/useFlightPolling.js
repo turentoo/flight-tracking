@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFlightStore } from '../store/flightStore';
 import { useConfigStore } from '../store/configStore';
 import { fetchFlightsInBoundary } from '../services/api/flightClient';
@@ -8,76 +8,75 @@ import { POLLING_INTERVAL, ACTIVE_POLLING_INTERVAL } from '../utils/constants';
  * Core polling hook. Fetches flights from ADSB.fi at regular intervals
  * when isActive is true, and stops when false.
  *
- * Implements adaptive polling:
- *  - Normal: POLLING_INTERVAL (60 s)
- *  - When flights detected in the last fetch: ACTIVE_POLLING_INTERVAL (20 s) for 5 min
+ * Uses setInterval with refs so that dependency changes (boundary, store
+ * actions) are picked up without restarting the interval timer.
  *
  * @param {boolean} isActive — whether to poll (controlled by useTimeWindow)
  */
 export default function useFlightPolling(isActive) {
-  const boundary = useConfigStore((s) => s.boundary);
-  const { setFlights, setLoading, updateFlightError, clearFlights } = useFlightStore();
+  const boundaryRef = useRef(useConfigStore.getState().boundary);
+  const activeUntilRef = useRef(0);
+  const intervalRef = useRef(null);
+  const fetchingRef = useRef(false);
 
-  // Track adaptive-polling state across renders without re-triggering the effect.
-  const activeUntilRef = useRef(0);     // timestamp until which we use the faster interval
-  const timerRef = useRef(null);
-  const isMountedRef = useRef(true);
-
-  const fetchFlights = useCallback(async () => {
-    if (!boundary) return;
-
-    setLoading(true);
-    try {
-      const flights = await fetchFlightsInBoundary(boundary);
-      if (!isMountedRef.current) return;
-
-      setFlights(flights);
-
-      // If flights are present, switch to the faster interval for 5 minutes.
-      if (flights.length > 0) {
-        activeUntilRef.current = Date.now() + 5 * 60 * 1000;
-      }
-    } catch (error) {
-      if (!isMountedRef.current) return;
-      updateFlightError(error);
-    } finally {
-      if (isMountedRef.current) setLoading(false);
-    }
-  }, [boundary, setFlights, setLoading, updateFlightError]);
-
-  // Returns the interval to use for the *next* poll.
-  const getInterval = useCallback(() => {
-    return Date.now() < activeUntilRef.current ? ACTIVE_POLLING_INTERVAL : POLLING_INTERVAL;
+  // Keep boundaryRef in sync with the store.
+  useEffect(() => {
+    return useConfigStore.subscribe((s) => {
+      boundaryRef.current = s.boundary;
+    });
   }, []);
 
-  // Schedule the next poll after the current one completes.
-  const scheduleNext = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      await fetchFlights();
-      if (isMountedRef.current && isActive) scheduleNext();
-    }, getInterval());
-  }, [fetchFlights, getInterval, isActive]);
-
   useEffect(() => {
-    isMountedRef.current = true;
+    const { setFlights, setLoading, updateFlightError, clearFlights } = useFlightStore.getState();
 
     if (!isActive) {
-      // Outside operating hours — clear data and stop.
       clearFlights();
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
       return;
     }
 
-    // Kick off an immediate fetch, then start the schedule loop.
-    (async () => {
-      await fetchFlights();
-      if (isMountedRef.current) scheduleNext();
-    })();
+    const doFetch = async () => {
+      const boundary = boundaryRef.current;
+      if (!boundary || fetchingRef.current) return;
+
+      fetchingRef.current = true;
+      setLoading(true);
+      try {
+        const flights = await fetchFlightsInBoundary(boundary);
+        setFlights(flights);
+        if (flights.length > 0) {
+          activeUntilRef.current = Date.now() + 5 * 60 * 1000;
+        }
+      } catch (error) {
+        updateFlightError(error);
+      } finally {
+        setLoading(false);
+        fetchingRef.current = false;
+      }
+    };
+
+    // Immediate first fetch.
+    doFetch();
+
+    // Poll at the faster interval; the API client's own rate limiter
+    // ensures we never actually hit ADSB.fi more often than MIN_INTERVAL_MS.
+    const getInterval = () =>
+      Date.now() < activeUntilRef.current ? ACTIVE_POLLING_INTERVAL : POLLING_INTERVAL;
+
+    // Use a self-adjusting interval via recursive setTimeout.
+    const schedule = () => {
+      intervalRef.current = setTimeout(() => {
+        doFetch().then(() => {
+          if (isActive) schedule();
+        });
+      }, getInterval());
+    };
+    schedule();
 
     return () => {
-      isMountedRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearTimeout(intervalRef.current);
+      intervalRef.current = null;
     };
-  }, [isActive, fetchFlights, scheduleNext, clearFlights]);
+  }, [isActive]); // Only depends on isActive — boundary changes picked up via ref
 }

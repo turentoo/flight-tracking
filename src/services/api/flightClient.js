@@ -13,12 +13,22 @@ const client = axios.create({
 
 // Rate-limit: never hit the API more often than MIN_INTERVAL_MS.
 // On 429, apply exponential backoff (doubles each consecutive 429, resets on success).
-let lastFetchTime = 0;
-let lastResult = null;
-let backoffUntil = 0;
-let consecutiveRateLimits = 0;
+// Persist state across Vite HMR reloads to avoid double-fetching on code changes.
+const _hmr = import.meta.hot?.data || {};
+let lastFetchTime = _hmr.lastFetchTime || 0;
+let lastResult = _hmr.lastResult || null;
+let backoffUntil = _hmr.backoffUntil || 0;
+let consecutiveRateLimits = _hmr.consecutiveRateLimits || 0;
 const MIN_INTERVAL_MS = 10000;
-const BASE_BACKOFF_MS = 60000; // 1 minute initial backoff on 429
+const BASE_BACKOFF_MS = 15000; // 15s initial backoff on 429
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    import.meta.hot.data.lastFetchTime = lastFetchTime;
+    import.meta.hot.data.lastResult = lastResult;
+    import.meta.hot.data.backoffUntil = backoffUntil;
+    import.meta.hot.data.consecutiveRateLimits = consecutiveRateLimits;
+  });
+}
 
 const FT_TO_M = 1 / 3.28084;
 const KT_TO_MS = 0.514444;
@@ -78,9 +88,9 @@ export const fetchFlightsInBoundary = async (boundary) => {
     return lastResult ?? [];
   }
 
-  // Respect minimum interval between requests.
-  if (lastResult !== null && (now - lastFetchTime) < MIN_INTERVAL_MS) {
-    return lastResult;
+  // Respect minimum interval between requests (also guards against React StrictMode double-mount).
+  if ((now - lastFetchTime) < MIN_INTERVAL_MS) {
+    return lastResult ?? [];
   }
 
   try {

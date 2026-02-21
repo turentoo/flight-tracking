@@ -11,7 +11,7 @@ export const FLIGHTAWARE_API_URL = import.meta.env.VITE_FLIGHTAWARE_API_URL || '
 
 // Polling Configuration
 export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '30000', 10);
-export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '30000', 10);
+export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '20000', 10);
 
 // Altitude & Breach Configuration
 export const ALTITUDE_THRESHOLD = parseInt(import.meta.env.VITE_ALTITUDE_THRESHOLD || '1300', 10);
@@ -50,8 +50,8 @@ Best wishes,
 Your Name
 your address`;
 
-// Duplicate prevention window (ms) — 10 minutes, so repeat circuit breaches are captured
-export const DUPLICATE_PREVENTION_WINDOW = 600000;
+// Duplicate prevention window (ms) — 5 minutes, so repeat circuit breaches are captured
+export const DUPLICATE_PREVENTION_WINDOW = 300000;
 
 // Date format for storage
 export const DATE_FORMAT = 'yyyy-MM-dd';

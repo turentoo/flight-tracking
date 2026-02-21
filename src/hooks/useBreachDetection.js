@@ -54,6 +54,8 @@ export default function useBreachDetection(isActive) {
 
   // Track the last-processed update so we don't re-scan the same data.
   const lastProcessedRef = useRef(null);
+  // Prevent concurrent detection runs (e.g. React StrictMode double-mount).
+  const detectingRef = useRef(false);
   // Track most recent new-breach timestamp for the alert banner.
   const latestBreachRef = useRef(null);
   // Callback the parent can read to get the latest breach (for banner).
@@ -84,29 +86,47 @@ export default function useBreachDetection(isActive) {
     lastProcessedRef.current = lastUpdated;
 
     const detectBreaches = async () => {
+      if (detectingRef.current) return;
+      detectingRef.current = true;
       const now = Date.now();
       const date = getCurrentDate();
       const hour = getCurrentHour();
       let newBreachCount = 0;
       const processedCallsigns = new Set();
+      console.debug(`[breach] Detection run — ${flights.length} flights to evaluate`);
 
       for (const flight of flights) {
+        const cs = flight.callsign || 'UNKNOWN';
+
         // Skip flights on the ground.
-        if (flight.onGround) continue;
+        if (flight.onGround) {
+          console.debug(`[breach] ${cs}: skipped — on ground`);
+          continue;
+        }
 
         // Must be inside the boundary.
-        if (!isWithinBoundary(flight.latitude, flight.longitude, boundary)) continue;
+        if (!isWithinBoundary(flight.latitude, flight.longitude, boundary)) {
+          continue; // too noisy to log every out-of-boundary flight
+        }
 
         // Convert altitude from meters to feet.
         const altMeters = flight.barometricAltitude ?? flight.geometricAltitude;
-        if (altMeters == null) continue;
+        if (altMeters == null) {
+          console.debug(`[breach] ${cs}: skipped — no altitude data`);
+          continue;
+        }
         const altFeet = altMeters * M_TO_FT;
 
         // Breach check is on barometric altitude directly (no QFE correction).
-        if (!isAltitudeBreach(altFeet, altitudeThreshold)) continue;
+        if (!isAltitudeBreach(altFeet, altitudeThreshold)) {
+          console.debug(`[breach] ${cs}: in boundary at ${Math.round(altFeet)}ft — above threshold (${altitudeThreshold}ft)`);
+          continue;
+        }
 
         // AGL stored for reference only.
         const agl = calculateAGL(altFeet, groundElevation);
+
+        console.debug(`[breach] ${cs}: BREACH CANDIDATE — ${Math.round(altFeet)}ft (threshold ${altitudeThreshold}ft)`);
 
         // --- This flight is a breach candidate ---
 
@@ -114,11 +134,15 @@ export default function useBreachDetection(isActive) {
         const dedupKey = buildDedupKey(flight.callsign);
 
         // Skip if already processed in this detection run (handles duplicate entries in a single API response).
-        if (processedCallsigns.has(dedupKey)) continue;
+        if (processedCallsigns.has(dedupKey)) {
+          console.debug(`[breach] ${cs}: skipped — already processed this run`);
+          continue;
+        }
         processedCallsigns.add(dedupKey);
         try {
           const last = await getLastBreachForKey(dedupKey);
           if (last && (now - last.lastRecordedAt) < DUPLICATE_PREVENTION_WINDOW) {
+            console.debug(`[breach] ${cs}: skipped — duplicate (last recorded ${Math.round((now - last.lastRecordedAt) / 1000)}s ago)`);
             continue; // Already recorded recently.
           }
         } catch {
@@ -147,6 +171,7 @@ export default function useBreachDetection(isActive) {
           await updateLastBreach(dedupKey, now, flight.latitude, flight.longitude);
           latestBreachRef.current = saved;
           newBreachCount++;
+          console.debug(`[breach] ${cs}: RECORDED — ${Math.round(altFeet)}ft at ${flight.latitude?.toFixed(4)},${flight.longitude?.toFixed(4)}`);
 
           // Notify callback if registered.
           if (onBreachRef.current) onBreachRef.current(saved);
@@ -176,6 +201,7 @@ export default function useBreachDetection(isActive) {
       if (newBreachCount > 0) {
         await refreshCurrentHour();
       }
+      detectingRef.current = false;
     };
 
     detectBreaches();
