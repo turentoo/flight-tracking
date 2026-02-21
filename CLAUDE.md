@@ -1,6 +1,6 @@
 # Flight Tracking
 
-React application for monitoring low-altitude aircraft over Radlett, UK. Polls ADSB.fi API (free, community-run ADS-B aggregator), detects altitude breaches (<1300ft AGL), and provides dashboard views.
+React application for monitoring low-altitude aircraft over Radlett, UK. Polls ADSB.fi API (free, community-run ADS-B aggregator), detects altitude breaches (<1300ft barometric), and provides dashboard views.
 
 ## Tech Stack
 
@@ -43,7 +43,7 @@ src/
 │   │   │                            6-month stats, monthly chart, breaches-by-month table
 │   │   └── BreachHistoryPage.jsx/css — Calendar drill-down history page
 │   ├── config/
-│   │   └── ConfigPanel.jsx/css    — Configuration modal (boundary, threshold, airport, skip airport types, hours, report email)
+│   │   └── ConfigPanel.jsx/css    — Configuration modal with two views: settings (boundary, threshold, airport, skip types, hours, FlightAware key, report email) and email template editor
 │   ├── map/
 │   │   ├── FlightMap.jsx/css      — Interactive Leaflet map with flights and boundary
 │   │   ├── FlightMarker.jsx       — Rotated aircraft icon with popup
@@ -78,7 +78,7 @@ src/
 │       ├── aglCalculator.js        — AGL calculation and breach threshold check
 │       └── boundaryChecker.js      — Point-in-rectangle check, Haversine distance
 ├── store/
-│   ├── configStore.js      — Boundary, threshold, hours, airport filter, skip airport types, report email, airport elevation (persisted to Supabase)
+│   ├── configStore.js      — Boundary, threshold, hours, airport filter, skip airport types, FlightAware API key, email template, report email, airport elevation (persisted to Supabase)
 │   ├── flightStore.js      — Current flights, count, loading/error state
 │   ├── breachStore.js      — Breach records, current hour breaches
 │   └── uiStore.js          — Active page, selected date/hour, modal visibility
@@ -87,6 +87,8 @@ src/
     ├── timeHelpers.js      — Operating hours check, date formatting, hour ranges
     ├── formatters.js       — Altitude, velocity, heading, coordinate formatting
     └── exportCsv.js        — CSV export utility for breach data
+supabase/
+└── schema.sql              — Database setup script (CREATE TABLE, indexes, RLS policies)
 ```
 
 ## UI Layout
@@ -117,25 +119,28 @@ All tables and charts have **graceful empty states** when no data is present.
 
 ## Configuration
 
-Environment variables in `.env.local`:
+Environment variables in `.env.local` (not committed to git — each user provides their own):
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` — Supabase publishable (anon) key
 - `VITE_ADSB_FI_API_URL` — ADSB.fi API base URL (default: `https://opendata.adsb.fi/api`)
 - `VITE_FLIGHTAWARE_API_URL` — FlightAware AeroAPI base URL (default: `https://aeroapi.flightaware.com/aeroapi`)
-- `VITE_FLIGHTAWARE_API_KEY` — FlightAware AeroAPI key (required for departure airport lookup)
 - `VITE_POLLING_INTERVAL` — Polling interval (30000ms default)
-- `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet AGL (1300)
+- `VITE_ALTITUDE_THRESHOLD` — Breach threshold in feet (1300)
 - `VITE_ACTIVE_HOURS_START` / `_END` — Operating hours (9-19)
 - `VITE_DEFAULT_BOUNDARY_*` — Default Radlett boundary coordinates
 
-User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has grouped sections: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport code in row), "Monitoring hours" (start/end hour in row), report email (full-width), and a single "Save configuration" button. Airport defaults to "EGTR" and is used as the label/filter value for the airport toggle on the monthly breaches table. Report email defaults to `your@email.com` and is used as the `mailto:` recipient in noise complaint reports.
+User configuration is stored in Supabase and editable via the Settings panel (gear icon). The ConfigPanel modal has two views:
+- **Settings view**: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport code in row, skip airport types), "Monitoring hours" (start/end hour in row), "FlightAware API" (API key, password-masked), report email (full-width), "Edit email template" link, and "Save configuration" button.
+- **Email template view**: Clickable placeholder pills (`[flight_number]`, `[timestamp]`, `[threshold]`, `[altitude]`, `[delta_altitude]`) that insert at cursor position, freetext textarea for the email body, "Back to settings" link. Template is persisted to Supabase and used by the Report button's `mailto:` link.
+
+Airport defaults to "EGTR" and is used as the label/filter value for the airport toggle on the monthly breaches table. FlightAware API key is stored in Supabase config (not env var) so each user provides their own via the UI. Report email defaults to `your@email.com`.
 
 ## Supabase Database
 
 Storage uses Supabase PostgreSQL (no local IndexedDB). Three tables:
 
 - **breaches** — Breach records (id, timestamp, date, hour, callsign, altitude, agl, latitude, longitude, velocity, heading, icao24, reported, departure_airport, aircraft_type, created_at). `reported` is BOOLEAN DEFAULT FALSE — tracks whether a noise complaint has been filed. `departure_airport` is TEXT — ICAO code of the departure airport, populated via FlightAware AeroAPI after each breach is saved. `aircraft_type` is TEXT — ICAO type code (e.g. P28A, R22, C172) from ADSB.fi `ac.t` field. Indexed on date, callsign, timestamp.
-- **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter, skipAirportTypes, airportElevation.
+- **config** — Key-value config (key TEXT PK, value JSONB, updated_at BIGINT). Stores boundary, altitudeThreshold, activeHoursStart, activeHoursEnd, reportEmail, airportFilter, skipAirportTypes, flightAwareApiKey, emailTemplate, airportElevation.
 - **last_breaches** — Duplicate prevention (callsign_altitude_key UNIQUE, last_recorded_at, latitude, longitude).
 
 RLS is enabled with permissive policies (single-user app). Column naming: snake_case in DB, camelCase mapping in `breachRepository.js`.
@@ -148,10 +153,11 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 
 ## Key Concepts
 
-- **AGL (Above Ground Level):** `barometric_altitude - ground_elevation`. Ground elevation fetched from OurAirports for Radlett Aerodrome (EGTR, ~300ft AMSL).
-- **Breach:** Flight with AGL < 1300ft within the monitoring boundary during operating hours.
-- **Duplicate prevention:** Two layers — (1) in-memory `processedCallsigns` Set per detection run deduplicates multiple entries for the same aircraft in a single ADSB.fi response, (2) `last_breaches` Supabase table prevents the same callsign from being re-recorded within 24 hours (one breach per aircraft per day).
+- **AGL (Above Ground Level):** `barometric_altitude - ground_elevation`. Ground elevation fetched from OurAirports for Radlett Aerodrome (EGTR, ~300ft AMSL). Stored on breach records for reference only.
+- **Breach:** Flight with barometric altitude < configured threshold (default 1300ft) within the monitoring boundary during operating hours. No QFE correction — raw barometric altitude is compared directly against the threshold.
+- **Duplicate prevention:** Three layers — (1) `detectingRef` mutex prevents concurrent detection runs (React StrictMode safe), (2) in-memory `processedCallsigns` Set per detection run deduplicates multiple entries for the same aircraft in a single ADSB.fi response, (3) `last_breaches` Supabase table prevents the same callsign from being re-recorded within 5 minutes (allows capturing repeat circuit breaches).
 - **Operating hours:** 9am–7pm local time. Polling stops outside this window.
+- **Debug logging:** `console.debug` messages in breach detection show skip reasons (on ground, no altitude, above threshold, duplicate) and recorded breaches. Visible in browser console with Verbose/All log level enabled.
 
 ## Theme & Design System
 
@@ -182,7 +188,8 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 - **API**: `https://opendata.adsb.fi/api` (free, no auth required)
 - **Endpoint**: `/v2/lat/{lat}/lon/{lon}/dist/{nm}` — queries by center + radius in nautical miles
 - **CORS**: In dev, Vite proxies `/adsb-api` → `https://opendata.adsb.fi/api` (configured in `vite.config.js`)
-- **Rate limiting**: Client-side 10s minimum between requests; exponential backoff on 429 (60s base, doubling)
+- **Rate limiting**: Client-side 10s minimum between requests; exponential backoff on 429 (15s base, doubling). Rate limit state persisted across Vite HMR reloads.
+- **Polling**: 30s normal interval, 20s active interval (when flights detected, for 5 min). Uses refs-based polling hook (StrictMode safe, no timer restarts on re-renders)
 - **Unit conversion**: `flightClient.js` converts ADSB.fi units (feet, knots, ft/min) → internal units (meters, m/s) so downstream code (breach detection, FlightMarker) is unchanged
 - **Aircraft type**: `ac.t` field provides ICAO type designator (e.g. P28A, C172, R22), mapped to `aircraftType` and stored on breach records
 - **Response field**: v2 API returns aircraft in `response.data.aircraft` (not `.ac`)
@@ -191,12 +198,20 @@ RLS is enabled with permissive policies (single-user app). Column naming: snake_
 
 - **API**: `https://aeroapi.flightaware.com/aeroapi` (requires API key)
 - **Endpoint**: `GET /flights/{callsign}` — returns flight details including origin airport
-- **Auth**: `x-apikey` header with key from `VITE_FLIGHTAWARE_API_KEY`
+- **Auth**: `x-apikey` header with key from Supabase config (`flightAwareApiKey`), entered via Settings UI
 - **CORS**: In dev, Vite proxies `/flightaware-api` → `https://aeroapi.flightaware.com/aeroapi`
 - **Rate limiting**: Client-side 6s minimum between requests (Personal plan = 10 req/min)
 - **Flow**: Breach saved → call FlightAware → update `departure_airport` with origin ICAO code / on failure: keep breach with null airport (displays as "Unknown")
 - **Skip types**: Configurable comma-separated list of ICAO aircraft type codes (e.g. "R22, P28A") in Settings. Flights matching these types skip the FlightAware lookup entirely (airport stays unknown). Useful for aircraft types where FlightAware data is unreliable.
 - **Client**: `flightAwareClient.js` follows same pattern as `flightClient.js`
+
+## New Project Setup
+
+1. Create a Supabase project
+2. Run `supabase/schema.sql` in the Supabase SQL Editor (creates tables, indexes, RLS policies)
+3. Create `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+4. `npm install && npm run dev`
+5. Open Settings in the app and enter your FlightAware API key
 
 ## Design
 

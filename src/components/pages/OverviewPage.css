@@ -459,6 +459,30 @@
 }
 
 /* Reported pill badge */
+.delete-alert-btn {
+  width: 100%;
+  padding: 6px 8px;
+  margin-top: 48px;
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.delete-alert-btn:hover {
+  color: #E53935;
+  border-color: #E53935;
+}
+
+.delete-alert-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .severity-dot {
   display: inline-block;
   width: 10px;

@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
-import { getBreachesForMonth, getMonthlyStats, setBreachReported } from '../../services/storage/breachRepository';
+import { getBreachesForMonth, getMonthlyStats, setBreachReported, deleteBreach } from '../../services/storage/breachRepository';
 import { formatCallsign } from '../../utils/formatters';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
 import EmptyState from '../shared/EmptyState';
@@ -239,8 +239,9 @@ function buildReportMailto(breach, email, altitudeThreshold, emailTemplate) {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function AlertExplorer({ breach, boundary, onReportedChange }) {
+function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
   const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const reportEmail = useConfigStore((s) => s.reportEmail);
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const emailTemplate = useConfigStore((s) => s.emailTemplate);
@@ -380,6 +381,22 @@ function AlertExplorer({ breach, boundary, onReportedChange }) {
         </label>
         <span className="report-toggle-label">Reported</span>
       </div>
+      <button
+        className="delete-alert-btn"
+        onClick={async () => {
+          setDeleting(true);
+          try {
+            await onDelete(breach.id);
+          } catch (err) {
+            console.error('Failed to delete alert:', err);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        disabled={deleting}
+      >
+        {deleting ? 'Deleting...' : 'Delete alert'}
+      </button>
     </div>
   );
 }
@@ -807,6 +824,11 @@ export default function OverviewPage() {
             useBreachStore.getState().updateBreachReported(id, reported);
             setSelectedBreach((prev) => prev && prev.id === id ? { ...prev, reported } : prev);
             setReportedUpdates((prev) => ({ ...prev, [id]: reported }));
+          }}
+          onDelete={async (id) => {
+            await deleteBreach(id);
+            useBreachStore.getState().removeBreach(id);
+            setSelectedBreach(null);
           }}
         />
       </div>
