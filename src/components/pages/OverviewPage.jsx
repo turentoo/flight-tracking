@@ -459,7 +459,7 @@ function CurrentHourChart({ breaches }) {
   );
 }
 
-function BreachesTable({ breaches, title, selectedId, onSelect }) {
+function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshold }) {
   if (breaches.length === 0) {
     return (
       <div className="card breaches-table-card">
@@ -480,6 +480,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
             <th>Coordinates</th>
             <th>Airport</th>
             <th>Altitude, ft</th>
+            <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>
           </tr>
@@ -496,6 +497,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect }) {
               <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
               <td>{b.departure_airport || 'Unknown'}</td>
               <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
+              <td><SeverityDot agl={b.agl} threshold={altitudeThreshold} /></td>
               <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
               <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
             </tr>
@@ -564,9 +566,25 @@ function MonthlyChart({ months }) {
   );
 }
 
+function SeverityDot({ agl, threshold }) {
+  if (agl == null || threshold == null) return null;
+  const gap = threshold - agl;
+  let color;
+  if (gap > 100) color = '#E53935';       // red
+  else if (gap > 50) color = '#FB8C00';    // orange
+  else color = '#FDD835';                  // yellow
+  return (
+    <span
+      className="severity-dot"
+      style={{ background: color }}
+      title={`${Math.round(gap)}ft below threshold`}
+    />
+  );
+}
+
 const PAGE_SIZE = 20;
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, airportFilter }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, airportFilter, altitudeThreshold }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -636,6 +654,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
             <th>Coordinates</th>
             <th>Airport</th>
             <th>Altitude, ft</th>
+            <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>
           </tr>
@@ -646,7 +665,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
             const dateLabel = format(dateObj, 'd MMMM yyyy');
             return [
               <tr key={`header-${date}`} className="date-group-header">
-                <td colSpan={7}>{dateLabel}</td>
+                <td colSpan={8}>{dateLabel}</td>
               </tr>,
               ...grouped[date].map((b) => (
                 <tr
@@ -659,6 +678,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
                   <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
                   <td>{b.departure_airport || 'Unknown'}</td>
                   <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
+                  <td><SeverityDot agl={b.agl} threshold={altitudeThreshold} /></td>
                   <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
                   <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
                 </tr>
@@ -693,6 +713,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
 export default function OverviewPage() {
   const currentHourBreaches = useBreachStore((s) => s.currentHourBreaches);
   const boundary = useConfigStore((s) => s.boundary);
+  const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const airportFilter = useConfigStore((s) => s.airportFilter) || 'EGTR';
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
@@ -730,6 +751,7 @@ export default function OverviewPage() {
             breaches={sorted}
             selectedId={selectedBreach?.id}
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
+            altitudeThreshold={altitudeThreshold}
           />
 
           <h2 className="section-heading past-heading">Past breaches</h2>
@@ -779,6 +801,7 @@ export default function OverviewPage() {
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
             reportedUpdates={reportedUpdates}
             airportFilter={airportOnly ? airportFilter : null}
+            altitudeThreshold={altitudeThreshold}
           />
         </div>
         <AlertExplorer

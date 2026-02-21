@@ -459,6 +459,13 @@
 }
 
 /* Reported pill badge */
+.severity-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
 .reported-pill {
   display: inline-block;
   padding: 2px 8px;
