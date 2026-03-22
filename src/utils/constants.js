@@ -1,31 +1,41 @@
+// Helper to get config from runtime (window._env_) or build-time (import.meta.env)
+const getEnv = (key, defaultValue) => {
+  // Runtime config (from docker environment variables)
+  if (typeof window !== 'undefined' && window._env_ && window._env_[key]) {
+    return window._env_[key];
+  }
+  // Build-time config (for development)
+  return import.meta.env[key] || defaultValue;
+};
+
 // Supabase Configuration
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+export const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+export const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
 // API Configuration
-export const ADSB_FI_API_URL = import.meta.env.VITE_ADSB_FI_API_URL || 'https://opendata.adsb.fi/api';
-export const OURAIRPORTS_API_URL = import.meta.env.VITE_OURAIRPORTS_API_URL;
+export const ADSB_FI_API_URL = getEnv('VITE_ADSB_FI_API_URL', 'https://opendata.adsb.fi/api');
+export const OURAIRPORTS_API_URL = getEnv('VITE_OURAIRPORTS_API_URL');
 
 // FlightAware AeroAPI Configuration
-export const FLIGHTAWARE_API_URL = import.meta.env.VITE_FLIGHTAWARE_API_URL || 'https://aeroapi.flightaware.com/aeroapi';
+export const FLIGHTAWARE_API_URL = getEnv('VITE_FLIGHTAWARE_API_URL', 'https://aeroapi.flightaware.com/aeroapi');
 
 // Polling Configuration
-export const POLLING_INTERVAL = parseInt(import.meta.env.VITE_POLLING_INTERVAL || '30000', 10);
-export const ACTIVE_POLLING_INTERVAL = parseInt(import.meta.env.VITE_ACTIVE_POLLING_INTERVAL || '20000', 10);
+export const POLLING_INTERVAL = parseInt(getEnv('VITE_POLLING_INTERVAL', '30000'), 10);
+export const ACTIVE_POLLING_INTERVAL = parseInt(getEnv('VITE_ACTIVE_POLLING_INTERVAL', '20000'), 10);
 
 // Altitude & Breach Configuration
-export const ALTITUDE_THRESHOLD = parseInt(import.meta.env.VITE_ALTITUDE_THRESHOLD || '1300', 10);
+export const ALTITUDE_THRESHOLD = parseInt(getEnv('VITE_ALTITUDE_THRESHOLD', '1300'), 10);
 
 // Operating Hours (24-hour format)
-export const ACTIVE_HOURS_START = parseInt(import.meta.env.VITE_ACTIVE_HOURS_START || '9', 10);
-export const ACTIVE_HOURS_END = parseInt(import.meta.env.VITE_ACTIVE_HOURS_END || '19', 10);
+export const ACTIVE_HOURS_START = parseInt(getEnv('VITE_ACTIVE_HOURS_START', '9'), 10);
+export const ACTIVE_HOURS_END = parseInt(getEnv('VITE_ACTIVE_HOURS_END', '19'), 10);
 
 // Default Boundary (Radlett area)
 export const DEFAULT_BOUNDARY = {
-  latMin: parseFloat(import.meta.env.VITE_DEFAULT_BOUNDARY_LAT_MIN || '51.666476'),
-  latMax: parseFloat(import.meta.env.VITE_DEFAULT_BOUNDARY_LAT_MAX || '51.692979'),
-  lonMin: parseFloat(import.meta.env.VITE_DEFAULT_BOUNDARY_LON_MIN || '-0.351682'),
-  lonMax: parseFloat(import.meta.env.VITE_DEFAULT_BOUNDARY_LON_MAX || '-0.277525'),
+  latMin: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LAT_MIN', '51.666476')),
+  latMax: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LAT_MAX', '51.692979')),
+  lonMin: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LON_MIN', '-0.351682')),
+  lonMax: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LON_MAX', '-0.277525')),
 };
 
 // Default report email recipient

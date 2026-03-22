@@ -1,0 +1,26 @@
+#!/bin/sh
+set -e
+
+# Generate env-config.js from environment variables
+cat > /usr/share/nginx/html/env-config.js <<EOF
+window._env_ = {
+  VITE_SUPABASE_URL: "${VITE_SUPABASE_URL}",
+  VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}",
+  VITE_ADSB_FI_API_URL: "${VITE_ADSB_FI_API_URL:-https://opendata.adsb.fi/api}",
+  VITE_FLIGHTAWARE_API_URL: "${VITE_FLIGHTAWARE_API_URL:-https://aeroapi.flightaware.com/aeroapi}",
+  VITE_POLLING_INTERVAL: "${VITE_POLLING_INTERVAL:-30000}",
+  VITE_ACTIVE_POLLING_INTERVAL: "${VITE_ACTIVE_POLLING_INTERVAL:-20000}",
+  VITE_ALTITUDE_THRESHOLD: "${VITE_ALTITUDE_THRESHOLD:-1300}",
+  VITE_ACTIVE_HOURS_START: "${VITE_ACTIVE_HOURS_START:-9}",
+  VITE_ACTIVE_HOURS_END: "${VITE_ACTIVE_HOURS_END:-19}",
+  VITE_DEFAULT_BOUNDARY_LAT_MIN: "${VITE_DEFAULT_BOUNDARY_LAT_MIN:-51.666476}",
+  VITE_DEFAULT_BOUNDARY_LAT_MAX: "${VITE_DEFAULT_BOUNDARY_LAT_MAX:-51.692979}",
+  VITE_DEFAULT_BOUNDARY_LON_MIN: "${VITE_DEFAULT_BOUNDARY_LON_MIN:--0.351682}",
+  VITE_DEFAULT_BOUNDARY_LON_MAX: "${VITE_DEFAULT_BOUNDARY_LON_MAX:--0.277525}"
+};
+EOF
+
+echo "Generated runtime configuration from environment variables"
+
+# Execute the original nginx entrypoint
+exec /docker-entrypoint.sh "$@"
