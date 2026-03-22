@@ -3,7 +3,6 @@ services:
     image: ghcr.io/turentoo/flight-tracking:latest
     container_name: flight-tracking
     restart: unless-stopped
-    user: "3005:3005"  # mrvroot:pgroup
     ports:
       - "3000:80"
     labels:
