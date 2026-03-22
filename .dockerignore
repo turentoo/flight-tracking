@@ -1,0 +1,48 @@
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output
+dist
+dist-ssr
+
+# Git
+.git
+.gitignore
+
+# Environment files (secrets)
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yaml
+
+# Documentation
+*.md
+README.md
+CLAUDE.md
+
+# Design files
+screenshots
+
+# Test files
+*.test.js
+*.spec.js
+__tests__
