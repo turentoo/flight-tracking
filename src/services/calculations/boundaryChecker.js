@@ -1,22 +1,16 @@
 /**
- * Check if a point (latitude, longitude) is within a rectangular boundary
+ * Check if a point (latitude, longitude) is within a circular boundary.
  * @param {number} latitude - Flight latitude
  * @param {number} longitude - Flight longitude
- * @param {Object} boundary - Boundary object with latMin, latMax, lonMin, lonMax
- * @returns {boolean} True if point is within boundary
+ * @param {Object} boundary - Boundary object with centerLat, centerLon, radiusKm
+ * @returns {boolean} True if point is within boundary circle
  */
 export const isWithinBoundary = (latitude, longitude, boundary) => {
   if (!boundary) return false;
   if (latitude === null || longitude === null) return false;
 
-  const { latMin, latMax, lonMin, lonMax } = boundary;
-
-  return (
-    latitude >= latMin &&
-    latitude <= latMax &&
-    longitude >= lonMin &&
-    longitude <= lonMax
-  );
+  const dist = calculateDistance(latitude, longitude, boundary.centerLat, boundary.centerLon);
+  return dist <= boundary.radiusKm;
 };
 
 /**
@@ -53,21 +47,7 @@ const toRadians = (degrees) => {
 export const getBoundaryCenter = (boundary) => {
   if (!boundary) return null;
   return {
-    latitude: (boundary.latMin + boundary.latMax) / 2,
-    longitude: (boundary.lonMin + boundary.lonMax) / 2,
-  };
-};
-
-/**
- * Get boundary dimensions in km
- */
-export const getBoundaryDimensions = (boundary) => {
-  if (!boundary) return null;
-  const northSouth = calculateDistance(boundary.latMin, 0, boundary.latMax, 0);
-  const eastWest = calculateDistance(0, boundary.lonMin, 0, boundary.lonMax);
-  return {
-    northSouth,
-    eastWest,
-    area: northSouth * eastWest,
+    latitude: boundary.centerLat,
+    longitude: boundary.centerLon,
   };
 };

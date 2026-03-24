@@ -81,13 +81,13 @@ export const useBreachStore = create((set, get) => ({
     }));
   },
 
-  updateBreachReported: (id, reported) => {
+  updateBreachStatus: (id, status) => {
     set((state) => ({
       breaches: state.breaches.map((b) =>
-        b.id === id ? { ...b, reported } : b
+        b.id === id ? { ...b, status } : b
       ),
       currentHourBreaches: state.currentHourBreaches.map((b) =>
-        b.id === id ? { ...b, reported } : b
+        b.id === id ? { ...b, status } : b
       ),
     }));
   },

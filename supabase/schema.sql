@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS breaches (
   nav_qnh               NUMERIC,                  -- QNH pressure setting in hPa
   corrected_altitude    NUMERIC,                  -- QNH-corrected altitude AMSL in feet
   height_above_aerodrome NUMERIC,                 -- height above aerodrome in feet
-  reported    BOOLEAN NOT NULL DEFAULT FALSE,     -- noise complaint filed
+  status      TEXT NOT NULL DEFAULT 'new',         -- new | reported | dismissed
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -57,3 +57,7 @@ CREATE POLICY "Allow all on last_breaches" ON last_breaches FOR ALL USING (true)
 ALTER TABLE breaches ADD COLUMN IF NOT EXISTS nav_qnh NUMERIC;
 ALTER TABLE breaches ADD COLUMN IF NOT EXISTS corrected_altitude NUMERIC;
 ALTER TABLE breaches ADD COLUMN IF NOT EXISTS height_above_aerodrome NUMERIC;
+
+-- 6. Migration: Replace reported boolean with status text (run on existing installs)
+ALTER TABLE breaches ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
+UPDATE breaches SET status = CASE WHEN reported = true THEN 'reported' ELSE 'new' END WHERE status = 'new' AND reported = true;

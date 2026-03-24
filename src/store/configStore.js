@@ -47,8 +47,26 @@ export const useConfigStore = create((set) => ({
       const flightAwareApiKey = await getConfigValue('flightAwareApiKey');
       const emailTemplate = await getConfigValue('emailTemplate');
 
+      // Migrate old rectangle boundary {latMin,latMax,lonMin,lonMax} → circle
+      let resolvedBoundary = boundary || DEFAULT_BOUNDARY;
+      if (resolvedBoundary.latMin != null && resolvedBoundary.centerLat == null) {
+        // Use inscribed circle: radius = half the shorter dimension (N-S vs E-W)
+        const R = 6371;
+        const toRad = (d) => d * Math.PI / 180;
+        const nsKm = R * toRad(resolvedBoundary.latMax - resolvedBoundary.latMin);
+        const midLat = toRad((resolvedBoundary.latMin + resolvedBoundary.latMax) / 2);
+        const ewKm = R * Math.cos(midLat) * toRad(resolvedBoundary.lonMax - resolvedBoundary.lonMin);
+        resolvedBoundary = {
+          centerLat: (resolvedBoundary.latMin + resolvedBoundary.latMax) / 2,
+          centerLon: (resolvedBoundary.lonMin + resolvedBoundary.lonMax) / 2,
+          radiusKm: Math.min(nsKm, ewKm) / 2,
+        };
+        // Persist the migrated boundary so this only happens once
+        setConfigValue('boundary', resolvedBoundary).catch(() => {});
+      }
+
       set({
-        boundary: boundary || DEFAULT_BOUNDARY,
+        boundary: resolvedBoundary,
         altitudeThreshold: altitudeThreshold || ALTITUDE_THRESHOLD,
         activeHoursStart: activeHoursStart || ACTIVE_HOURS_START,
         activeHoursEnd: activeHoursEnd || ACTIVE_HOURS_END,

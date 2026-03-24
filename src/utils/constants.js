@@ -20,8 +20,8 @@ export const OURAIRPORTS_API_URL = getEnv('VITE_OURAIRPORTS_API_URL');
 export const FLIGHTAWARE_API_URL = getEnv('VITE_FLIGHTAWARE_API_URL', 'https://aeroapi.flightaware.com/aeroapi');
 
 // Polling Configuration
-export const POLLING_INTERVAL = parseInt(getEnv('VITE_POLLING_INTERVAL', '30000'), 10);
-export const ACTIVE_POLLING_INTERVAL = parseInt(getEnv('VITE_ACTIVE_POLLING_INTERVAL', '20000'), 10);
+export const POLLING_INTERVAL = parseInt(getEnv('VITE_POLLING_INTERVAL', '25000'), 10);
+export const ACTIVE_POLLING_INTERVAL = parseInt(getEnv('VITE_ACTIVE_POLLING_INTERVAL', '10000'), 10);
 
 // Altitude & Breach Configuration
 export const ALTITUDE_THRESHOLD = parseInt(getEnv('VITE_ALTITUDE_THRESHOLD', '1300'), 10);
@@ -30,12 +30,12 @@ export const ALTITUDE_THRESHOLD = parseInt(getEnv('VITE_ALTITUDE_THRESHOLD', '13
 export const ACTIVE_HOURS_START = parseInt(getEnv('VITE_ACTIVE_HOURS_START', '9'), 10);
 export const ACTIVE_HOURS_END = parseInt(getEnv('VITE_ACTIVE_HOURS_END', '19'), 10);
 
-// Default Boundary (Radlett area)
+// Default Boundary (Radlett area — circle centered on approximate rectangle midpoint)
+// Radius ~1.47km matches the inscribed circle of the original rectangle (~2.95km N-S)
 export const DEFAULT_BOUNDARY = {
-  latMin: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LAT_MIN', '51.666476')),
-  latMax: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LAT_MAX', '51.692979')),
-  lonMin: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LON_MIN', '-0.351682')),
-  lonMax: parseFloat(getEnv('VITE_DEFAULT_BOUNDARY_LON_MAX', '-0.277525')),
+  centerLat: 51.6797,
+  centerLon: -0.3146,
+  radiusKm: 1.47,
 };
 
 // Default report email recipient
@@ -62,6 +62,14 @@ your address`;
 
 // Duplicate prevention window (ms) — 5 minutes, so repeat circuit breaches are captured
 export const DUPLICATE_PREVENTION_WINDOW = 300000;
+
+// Cross-poll flight tracking
+// Multiplier for API query radius vs boundary corner distance (2.5x catches planes ~4-5km out)
+export const QUERY_RADIUS_MULTIPLIER = 2.5;
+// How long to remember a flight after last seen (ms)
+export const TRACKER_TTL = 90000;
+// Max position history entries per tracked flight
+export const TRACKER_MAX_POSITIONS = 10;
 
 // Date format for storage
 export const DATE_FORMAT = 'yyyy-MM-dd';

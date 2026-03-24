@@ -20,8 +20,10 @@ function App() {
   const [appReady, setAppReady] = useState(false);
 
   const { isActive } = useTimeWindow();
-  useFlightPolling(isActive);
-  const { onBreachRef } = useBreachDetection(isActive);
+  // Gate polling & detection on appReady so that the Supabase config
+  // (boundary, threshold, etc.) is loaded before any detection runs.
+  useFlightPolling(isActive && appReady);
+  const { onBreachRef } = useBreachDetection(isActive && appReady);
 
   // Escape key closes config panel.
   useEffect(() => {

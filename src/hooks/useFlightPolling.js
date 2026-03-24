@@ -46,7 +46,7 @@ export default function useFlightPolling(isActive) {
         const flights = await fetchFlightsInBoundary(boundary);
         setFlights(flights);
         if (flights.length > 0) {
-          activeUntilRef.current = Date.now() + 5 * 60 * 1000;
+          activeUntilRef.current = Date.now() + 1 * 60 * 1000;
         }
       } catch (error) {
         updateFlightError(error);

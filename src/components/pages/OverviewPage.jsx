@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
-import { getBreachesForMonth, getMonthlyStats, setBreachReported, deleteBreach } from '../../services/storage/breachRepository';
+import { getBreachesForMonth, getMonthlyStats, setBreachStatus, deleteBreach } from '../../services/storage/breachRepository';
 import { formatCallsign } from '../../utils/formatters';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
 import EmptyState from '../shared/EmptyState';
@@ -187,7 +187,7 @@ function BoundaryMiniMap() {
         touchZoom={true}
         style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>' />
         <FitBoundary boundary={boundary} padding={[30, 30]} />
         <EditableBoundary boundary={boundary} onBoundaryChange={handleBoundaryChange} />
       </MapContainer>
@@ -252,8 +252,14 @@ function buildReportMailto(breach, email, altitudeThreshold, emailTemplate) {
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
-  const [toggling, setToggling] = useState(false);
+function StatusPill({ status }) {
+  const label = status === 'new' ? 'New' : status === 'reported' ? 'Reported' : status === 'dismissed' ? 'Dismissed' : 'New';
+  const className = `status-pill status-pill-${status || 'new'}`;
+  return <span className={className}>{label}</span>;
+}
+
+function AlertExplorer({ breach, boundary, onStatusChange, onDelete }) {
+  const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const reportEmail = useConfigStore((s) => s.reportEmail);
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
@@ -269,18 +275,18 @@ function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
   }
 
   const hasCoords = breach.latitude != null && breach.longitude != null;
-  const isReported = !!breach.reported;
+  const currentStatus = breach.status || 'new';
 
-  const handleToggleReported = async () => {
-    setToggling(true);
+  const handleStatusChange = async (newStatus) => {
+    if (newStatus === currentStatus || updating) return;
+    setUpdating(true);
+    onStatusChange(breach.id, newStatus);
     try {
-      const newValue = !isReported;
-      await setBreachReported(breach.id, newValue);
-      onReportedChange(breach.id, newValue);
+      await setBreachStatus(breach.id, newStatus);
     } catch (err) {
-      console.error('Failed to update reported status:', err);
+      console.error('Failed to persist breach status:', err);
     } finally {
-      setToggling(false);
+      setUpdating(false);
     }
   };
 
@@ -351,7 +357,7 @@ function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
             touchZoom={false}
             style={{ width: '100%', height: '100%' }}
           >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>' />
             <Marker position={[breach.latitude, breach.longitude]} />
             <AlertMapFit lat={breach.latitude} lng={breach.longitude} boundary={boundary} />
           </MapContainer>
@@ -392,7 +398,20 @@ function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
           <div className="alert-detail-label">Corrected altitude</div>
         </div>
       </div>
-      {!isReported && (
+      <div className="status-selector" role="group" aria-label="Breach status">
+        {['new', 'reported', 'dismissed'].map((s) => (
+          <button
+            key={s}
+            className={`status-selector-btn status-selector-${s}${currentStatus === s ? ' active' : ''}`}
+            onClick={() => handleStatusChange(s)}
+            disabled={updating}
+            aria-pressed={currentStatus === s}
+          >
+            {s.charAt(0).toUpperCase() + s.slice(1)}
+          </button>
+        ))}
+      </div>
+      {currentStatus !== 'reported' && (
         <a
           className="report-button"
           href={buildReportMailto(breach, reportEmail, altitudeThreshold, emailTemplate)}
@@ -406,18 +425,6 @@ function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
           Report
         </a>
       )}
-      <div className="report-toggle-container">
-        <label className="report-toggle">
-          <input
-            type="checkbox"
-            checked={isReported}
-            onChange={handleToggleReported}
-            disabled={toggling}
-          />
-          <span className="report-toggle-slider" />
-        </label>
-        <span className="report-toggle-label">Reported</span>
-      </div>
       <button
         className="delete-alert-btn"
         onClick={async () => {
@@ -496,7 +503,7 @@ function CurrentHourChart({ breaches }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12 }} />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--text-primary)' }} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
                   <Bar dataKey="count" fill="var(--chart-2)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -505,6 +512,23 @@ function CurrentHourChart({ breaches }) {
         </div>
         <BoundaryMiniMap />
       </div>
+    </div>
+  );
+}
+
+function StatusFilter({ value, onChange }) {
+  return (
+    <div className="status-filter" role="group" aria-label="Filter by status">
+      {['all', 'new', 'reported', 'dismissed'].map((s) => (
+        <button
+          key={s}
+          className={`status-filter-btn${value === s ? ' active' : ''}`}
+          onClick={() => onChange(s)}
+          aria-pressed={value === s}
+        >
+          {s.charAt(0).toUpperCase() + s.slice(1)}
+        </button>
+      ))}
     </div>
   );
 }
@@ -551,7 +575,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshol
               <td>{b.height_above_aerodrome != null ? Math.round(b.height_above_aerodrome).toLocaleString() : 'N/A'}</td>
               <td><SeverityDot altitude={b.altitude} heightAboveAerodrome={b.height_above_aerodrome} threshold={altitudeThreshold} /></td>
               <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
-              <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
+              <td><StatusPill status={b.status || 'new'} /></td>
             </tr>
           ))}
         </tbody>
@@ -606,7 +630,7 @@ function MonthlyChart({ months }) {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
           <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-          <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12 }} />
+          <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--text-primary)' }} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
           <Bar dataKey="count" radius={[4, 4, 0, 0]}>
             {chartData.map((entry, index) => (
               <rect key={index} fill={entry.fill} />
@@ -637,7 +661,7 @@ function SeverityDot({ altitude, heightAboveAerodrome, threshold }) {
 
 const PAGE_SIZE = 20;
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdates, airportFilter, altitudeThreshold, deletedIds }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates, airportFilter, altitudeThreshold, deletedIds, statusFilter, onStatusFilterChange }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -659,16 +683,19 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
     if (deletedIds && deletedIds.size > 0) {
       result = result.filter((b) => !deletedIds.has(b.id));
     }
-    if (reportedUpdates && Object.keys(reportedUpdates).length > 0) {
+    if (statusUpdates && Object.keys(statusUpdates).length > 0) {
       result = result.map((b) =>
-        Object.prototype.hasOwnProperty.call(reportedUpdates, b.id) ? { ...b, reported: reportedUpdates[b.id] } : b
+        Object.prototype.hasOwnProperty.call(statusUpdates, b.id) ? { ...b, status: statusUpdates[b.id] } : b
       );
     }
     if (airportFilter) {
       result = result.filter((b) => b.departure_airport === airportFilter);
     }
+    if (statusFilter && statusFilter !== 'all') {
+      result = result.filter((b) => (b.status || 'new') === statusFilter);
+    }
     return result;
-  }, [breaches, deletedIds, reportedUpdates, airportFilter]);
+  }, [breaches, deletedIds, statusUpdates, airportFilter, statusFilter]);
 
   // Reset to first page when filters or data change
   useEffect(() => { setPage(0); }, [displayBreaches]);
@@ -685,7 +712,10 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
   if (displayBreaches.length === 0) {
     return (
       <div className="card">
-        <h3 className="card-title">Breaches by month</h3>
+        <div className="card-title-row">
+          <h3 className="card-title">Breaches by month</h3>
+          {onStatusFilterChange && <StatusFilter value={statusFilter} onChange={onStatusFilterChange} />}
+        </div>
         <EmptyState title={`No breaches recorded for ${monthName} ${year}`} description="Select a different month to view breach records" />
       </div>
     );
@@ -701,7 +731,10 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
 
   return (
     <div className="card">
-      <h3 className="card-title">Breaches by month</h3>
+      <div className="card-title-row">
+        <h3 className="card-title">Breaches by month</h3>
+        {onStatusFilterChange && <StatusFilter value={statusFilter} onChange={onStatusFilterChange} />}
+      </div>
       <table className="data-table grouped-table">
         <thead>
           <tr>
@@ -738,7 +771,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
                   <td>{b.height_above_aerodrome != null ? Math.round(b.height_above_aerodrome).toLocaleString() : 'N/A'}</td>
                   <td><SeverityDot altitude={b.altitude} heightAboveAerodrome={b.height_above_aerodrome} threshold={altitudeThreshold} /></td>
                   <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
-                  <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
+                  <td><StatusPill status={b.status || 'new'} /></td>
                 </tr>
               )),
             ];
@@ -775,9 +808,10 @@ export default function OverviewPage() {
   const airportFilter = useConfigStore((s) => s.airportFilter) || 'EGTR';
   const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
-  const [reportedUpdates, setReportedUpdates] = useState({});
+  const [statusUpdates, setStatusUpdates] = useState({});
   const [deletedIds, setDeletedIds] = useState(new Set());
   const [airportOnly, setAirportOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Month/year selector state
   const now = new Date();
@@ -858,19 +892,21 @@ export default function OverviewPage() {
             month={selectedMonth}
             selectedId={selectedBreach?.id}
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
-            reportedUpdates={reportedUpdates}
+            statusUpdates={statusUpdates}
             airportFilter={airportOnly ? airportFilter : null}
             altitudeThreshold={altitudeThreshold}
             deletedIds={deletedIds}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
           />
         </div>
         <AlertExplorer
           breach={selectedBreach}
           boundary={boundary}
-          onReportedChange={(id, reported) => {
-            useBreachStore.getState().updateBreachReported(id, reported);
-            setSelectedBreach((prev) => prev && prev.id === id ? { ...prev, reported } : prev);
-            setReportedUpdates((prev) => ({ ...prev, [id]: reported }));
+          onStatusChange={(id, status) => {
+            useBreachStore.getState().updateBreachStatus(id, status);
+            setSelectedBreach((prev) => prev && prev.id === id ? { ...prev, status } : prev);
+            setStatusUpdates((prev) => ({ ...prev, [id]: status }));
           }}
           onDelete={async (id) => {
             await deleteBreach(id);
