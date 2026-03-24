@@ -82,7 +82,7 @@
   width: 12px;
   height: 12px;
   background-color: #fff;
-  border: 2px solid #646cff;
+  border: 2px solid var(--accent);
   border-radius: 2px;
   cursor: move;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -129,7 +129,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--text-primary);
+  background-color: var(--chart-2);
 }
 
 .legend-label {
@@ -148,7 +148,7 @@
   padding: 10px 12px;
   font-weight: 500;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--text-muted);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -301,7 +301,7 @@
   position: sticky;
   top: 24px;
   align-self: flex-start;
-  border-left: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-left: 0.5px solid var(--border-color);
   padding-left: 24px;
 }
 
@@ -332,7 +332,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(184, 153, 235, 0.2);
+  background-color: rgba(225, 29, 72, 0.15);
   border-radius: 8px;
   font-size: 14px;
   line-height: 1;
@@ -355,7 +355,7 @@
 
 .alert-detail-label {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--text-muted);
   margin-top: 1px;
 }
 
@@ -364,7 +364,7 @@
   height: 140px;
   border-radius: 8px;
   overflow: hidden;
-  border: 2px dashed #7DBBFF;
+  border: 2px dashed #38BDF8;
   margin-bottom: 16px;
 }
 
@@ -385,8 +385,8 @@
   width: 100%;
   padding: 10px 16px;
   margin-top: 16px;
-  background-color: var(--text-primary);
-  color: var(--bg-card);
+  background-color: var(--accent);
+  color: #fff;
   border: none;
   border-radius: 12px;
   font-size: 14px;
@@ -398,7 +398,7 @@
 
 .report-button:hover {
   opacity: 0.85;
-  color: var(--bg-card);
+  color: #fff;
 }
 
 /* Report toggle */
@@ -500,8 +500,8 @@
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #1a7a3a;
-  background-color: rgba(113, 221, 140, 0.25);
+  color: #34D399;
+  background-color: rgba(52, 211, 153, 0.15);
   border-radius: 10px;
   line-height: 1.4;
 }
@@ -512,8 +512,8 @@
   padding: 1px 4px;
   font-size: 9px;
   font-weight: 700;
-  color: #4a6fa5;
-  background-color: rgba(125, 187, 255, 0.25);
+  color: #38BDF8;
+  background-color: rgba(56, 189, 248, 0.15);
   border-radius: 4px;
   vertical-align: middle;
   cursor: help;

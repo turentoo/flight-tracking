@@ -1,10 +1,10 @@
-import { Rectangle, Tooltip } from 'react-leaflet';
+import { Circle, Tooltip } from 'react-leaflet';
 
 const BOUNDARY_STYLE = {
-  color: '#646cff',
+  color: '#E11D48',
   weight: 3,
   opacity: 1,
-  fillColor: '#646cff',
+  fillColor: '#E11D48',
   fillOpacity: 0.15,
   dashArray: '6 4',
 };
@@ -12,14 +12,13 @@ const BOUNDARY_STYLE = {
 export default function BoundaryOverlay({ boundary }) {
   if (!boundary) return null;
 
-  const bounds = [
-    [boundary.latMin, boundary.lonMin],
-    [boundary.latMax, boundary.lonMax],
-  ];
-
   return (
-    <Rectangle bounds={bounds} pathOptions={BOUNDARY_STYLE}>
+    <Circle
+      center={[boundary.centerLat, boundary.centerLon]}
+      radius={boundary.radiusKm * 1000}
+      pathOptions={BOUNDARY_STYLE}
+    >
       <Tooltip sticky>Monitoring boundary</Tooltip>
-    </Rectangle>
+    </Circle>
   );
 }

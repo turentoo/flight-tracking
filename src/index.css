@@ -5,43 +5,43 @@
 }
 
 :root {
-  /* Light theme (default) */
-  --bg-primary: #FFFFFF;
-  --bg-card: #F9F9FA;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
-  --text-primary: #000000;
-  --text-secondary: rgba(0, 0, 0, 0.4);
-  --text-muted: rgba(0, 0, 0, 0.4);
-  --border-color: rgba(0, 0, 0, 0.1);
-  --accent: #4f6ef7;
-  --accent-hover: #3b5bdb;
-  --accent-light: rgba(125, 187, 255, 0.2);
-  --success: #2ecc71;
-  --warning: #f39c12;
-  --error: #e74c3c;
-  --info: #3498db;
-  --card-shadow: none;
-  --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Dark aviation theme — Aero-Shield brand */
+  --bg-primary: #0F172A;
+  --bg-card: #1E293B;
+  --bg-secondary: #151D2E;
+  --bg-tertiary: #334155;
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-muted: rgba(255, 255, 255, 0.35);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --accent: #E11D48;
+  --accent-hover: #BE123C;
+  --accent-light: rgba(225, 29, 72, 0.15);
+  --success: #34D399;
+  --warning: #F59E0B;
+  --error: #E11D48;
+  --info: #38BDF8;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.5);
   --sidebar-width: 212px;
 
-  /* Chart palette */
-  --chart-1: #6BE6D3;
-  --chart-2: #000000;
-  --chart-3: #7DBBFF;
-  --chart-4: #B899EB;
-  --chart-5: #71DD8C;
-  --chart-6: #A0BCE8;
+  /* Chart palette — rose/pink tones with amber & blue accents */
+  --chart-1: #E11D48;
+  --chart-2: #FB7185;
+  --chart-3: #F59E0B;
+  --chart-4: #38BDF8;
+  --chart-5: #FDA4AF;
+  --chart-6: #FECDD3;
 
   /* Stat card backgrounds */
-  --stat-card-blue: rgba(125, 187, 255, 0.2);
-  --stat-card-purple: rgba(184, 153, 235, 0.2);
+  --stat-card-blue: rgba(56, 189, 248, 0.12);
+  --stat-card-purple: rgba(225, 29, 72, 0.12);
 
   /* Stat card accents (legacy) */
-  --stat-blue: #4f6ef7;
-  --stat-teal: #4ecdc4;
-  --stat-dark: #1a1a2e;
-  --stat-purple: #a78bfa;
+  --stat-blue: #38BDF8;
+  --stat-teal: #34D399;
+  --stat-dark: #0F172A;
+  --stat-purple: #E11D48;
 
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -121,24 +121,7 @@ textarea:focus {
   background-color: var(--bg-card);
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #1a1a1a;
-    --bg-card: #2d2d2d;
-    --bg-secondary: #2d2d2d;
-    --bg-tertiary: #3d3d3d;
-    --text-primary: rgba(255, 255, 255, 0.87);
-    --text-secondary: rgba(255, 255, 255, 0.6);
-    --text-muted: rgba(255, 255, 255, 0.4);
-    --border-color: rgba(255, 255, 255, 0.1);
-    --accent: #646cff;
-    --accent-hover: #535bf2;
-    --accent-light: rgba(100, 108, 255, 0.15);
-    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.4);
-  }
-}
+/* Theme is always dark — no light/dark media query needed */
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {

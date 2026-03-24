@@ -20,8 +20,8 @@
 .sidebar-logo-icon {
   width: 32px;
   height: 32px;
-  background-color: var(--text-primary);
-  color: var(--bg-card);
+  background-color: var(--accent);
+  color: #fff;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -75,12 +75,12 @@
 }
 
 .nav-item:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
 }
 
 .nav-item.active {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   font-weight: 600;
 }

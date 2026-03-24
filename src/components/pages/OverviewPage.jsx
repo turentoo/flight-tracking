@@ -13,10 +13,10 @@ import EmptyState from '../shared/EmptyState';
 import './OverviewPage.css';
 
 const BOUNDARY_STYLE = {
-  color: '#646cff',
+  color: '#E11D48',
   weight: 3,
   opacity: 1,
-  fillColor: '#646cff',
+  fillColor: '#E11D48',
   fillOpacity: 0.15,
   dashArray: '6 4',
 };
@@ -497,7 +497,7 @@ function CurrentHourChart({ breaches }) {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="var(--text-primary)" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="count" fill="var(--chart-2)" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </>
