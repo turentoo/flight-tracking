@@ -9,6 +9,11 @@ const EMAIL_PLACEHOLDERS = [
   { label: '[threshold]', value: '[threshold]' },
   { label: '[altitude]', value: '[altitude]' },
   { label: '[delta_altitude]', value: '[delta_altitude]' },
+  { label: '[coordinates]', value: '[coordinates]' },
+  { label: '[aircraft_type]', value: '[aircraft_type]' },
+  { label: '[nav_qnh]', value: '[nav_qnh]' },
+  { label: '[corrected_altitude]', value: '[corrected_altitude]' },
+  { label: '[height_above_aerodrome]', value: '[height_above_aerodrome]' },
 ];
 
 function EmailTemplateEditor({ template, onChange, onBack }) {
@@ -86,10 +91,9 @@ export default function ConfigPanel({ onClose }) {
 
   const [view, setView] = useState('settings');
   const [formData, setFormData] = useState({
-    latMin: String(boundary?.latMin ?? DEFAULT_BOUNDARY.latMin),
-    latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
-    lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
-    lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
+    centerLat: String(boundary?.centerLat ?? DEFAULT_BOUNDARY.centerLat),
+    centerLon: String(boundary?.centerLon ?? DEFAULT_BOUNDARY.centerLon),
+    radiusKm: String(boundary?.radiusKm ?? DEFAULT_BOUNDARY.radiusKm),
     altitudeThreshold: String(altitudeThreshold || ALTITUDE_THRESHOLD),
     activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
     activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
@@ -102,10 +106,9 @@ export default function ConfigPanel({ onClose }) {
 
   useEffect(() => {
     setFormData({
-      latMin: String(boundary?.latMin ?? DEFAULT_BOUNDARY.latMin),
-      latMax: String(boundary?.latMax ?? DEFAULT_BOUNDARY.latMax),
-      lonMin: String(boundary?.lonMin ?? DEFAULT_BOUNDARY.lonMin),
-      lonMax: String(boundary?.lonMax ?? DEFAULT_BOUNDARY.lonMax),
+      centerLat: String(boundary?.centerLat ?? DEFAULT_BOUNDARY.centerLat),
+      centerLon: String(boundary?.centerLon ?? DEFAULT_BOUNDARY.centerLon),
+      radiusKm: String(boundary?.radiusKm ?? DEFAULT_BOUNDARY.radiusKm),
       altitudeThreshold: String(altitudeThreshold || ALTITUDE_THRESHOLD),
       activeHoursStart: String(activeHoursStart ?? ACTIVE_HOURS_START),
       activeHoursEnd: String(activeHoursEnd ?? ACTIVE_HOURS_END),
@@ -125,10 +128,9 @@ export default function ConfigPanel({ onClose }) {
   const handleSave = async () => {
     try {
       const newBoundary = {
-        latMin: parseFloat(formData.latMin),
-        latMax: parseFloat(formData.latMax),
-        lonMin: parseFloat(formData.lonMin),
-        lonMax: parseFloat(formData.lonMax),
+        centerLat: parseFloat(formData.centerLat),
+        centerLon: parseFloat(formData.centerLon),
+        radiusKm: parseFloat(formData.radiusKm),
       };
       await setBoundary(newBoundary);
       await setAltitudeThreshold(parseInt(formData.altitudeThreshold, 10));
@@ -172,22 +174,18 @@ export default function ConfigPanel({ onClose }) {
           <div className="config-body">
             <div className="config-group">
               <span className="config-group-label">Monitoring boundary</span>
-              <div className="config-group-fields config-group-fields--grid">
+              <div className="config-group-fields config-group-fields--row">
                 <div className="config-input">
-                  <label className="config-input-label">Latitude min</label>
-                  <input type="number" name="latMin" value={formData.latMin} onChange={handleChange} step="0.001" />
+                  <label className="config-input-label">Center latitude</label>
+                  <input type="number" name="centerLat" value={formData.centerLat} onChange={handleChange} step="0.001" />
                 </div>
                 <div className="config-input">
-                  <label className="config-input-label">Latitude max</label>
-                  <input type="number" name="latMax" value={formData.latMax} onChange={handleChange} step="0.001" />
+                  <label className="config-input-label">Center longitude</label>
+                  <input type="number" name="centerLon" value={formData.centerLon} onChange={handleChange} step="0.001" />
                 </div>
                 <div className="config-input">
-                  <label className="config-input-label">Longitude min</label>
-                  <input type="number" name="lonMin" value={formData.lonMin} onChange={handleChange} step="0.001" />
-                </div>
-                <div className="config-input">
-                  <label className="config-input-label">Longitude max</label>
-                  <input type="number" name="lonMax" value={formData.lonMax} onChange={handleChange} step="0.001" />
+                  <label className="config-input-label">Radius, km</label>
+                  <input type="number" name="radiusKm" value={formData.radiusKm} onChange={handleChange} step="0.1" min="0.1" />
                 </div>
               </div>
             </div>

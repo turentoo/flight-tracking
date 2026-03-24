@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { ADSB_FI_API_URL } from '../../utils/constants';
-import { getBoundaryCenter, calculateDistance } from '../calculations/boundaryChecker';
+import { ADSB_FI_API_URL, QUERY_RADIUS_MULTIPLIER } from '../../utils/constants';
+import { getBoundaryCenter } from '../calculations/boundaryChecker';
 
 // In dev, Vite proxies /adsb-api → https://opendata.adsb.fi/api to avoid CORS.
 // In production, hit the real URL directly (served from same origin or a CORS-friendly proxy).
@@ -57,27 +57,21 @@ const mapAircraftToFlight = (ac) => {
     spi: ac.spi ?? false,
     categoryCode: ac.category ?? null,
     aircraftType: ac.t ?? null,
+    navQnh: ac.nav_qnh ?? null,
   };
 };
 
 /**
- * Compute the search radius in nautical miles from a boundary rectangle.
- * Uses the distance from center to a corner, plus a 10 % buffer.
+ * Compute the search radius in nautical miles from a circular boundary.
+ * Applies QUERY_RADIUS_MULTIPLIER to catch approaching aircraft.
  */
 const boundaryToRadius = (boundary) => {
-  const center = getBoundaryCenter(boundary);
-  const distKm = calculateDistance(
-    center.latitude,
-    center.longitude,
-    boundary.latMax,
-    boundary.lonMax,
-  );
-  return distKm * KM_TO_NM * 1.1; // 10 % buffer
+  return boundary.radiusKm * KM_TO_NM * QUERY_RADIUS_MULTIPLIER;
 };
 
 /**
  * Fetch flights near the configured boundary from ADSB.fi.
- * @param {Object} boundary - { latMin, latMax, lonMin, lonMax }
+ * @param {Object} boundary - { centerLat, centerLon, radiusKm }
  * @returns {Promise<Array>} Array of internal flight objects (altitudes in meters, velocity in m/s)
  */
 export const fetchFlightsInBoundary = async (boundary) => {

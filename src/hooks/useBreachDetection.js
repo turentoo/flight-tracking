@@ -2,13 +2,13 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useFlightStore } from '../store/flightStore';
 import { useConfigStore } from '../store/configStore';
 import { useBreachStore } from '../store/breachStore';
-import { calculateAGL, isBelowThreshold } from '../services/calculations/aglCalculator';
+import { calculateAGL, isBelowThreshold, calculateCorrectedAltitude, calculateHeightAboveAerodrome } from '../services/calculations/aglCalculator';
 import { isWithinBoundary } from '../services/calculations/boundaryChecker';
 import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches, updateBreachDepartureAirport } from '../services/storage/breachRepository';
 import { fetchDepartureAirport } from '../services/api/flightAwareClient';
 import { formatCallsign } from '../utils/formatters';
 import { getCurrentDate, getCurrentHour } from '../utils/timeHelpers';
-import { DUPLICATE_PREVENTION_WINDOW } from '../utils/constants';
+import { DUPLICATE_PREVENTION_WINDOW, TRACKER_TTL, TRACKER_MAX_POSITIONS } from '../utils/constants';
 
 /**
  * Meters-to-feet conversion factor.
@@ -60,6 +60,9 @@ export default function useBreachDetection(isActive) {
   const latestBreachRef = useRef(null);
   // Callback the parent can read to get the latest breach (for banner).
   const onBreachRef = useRef(null);
+  // Cross-poll flight tracker — persists across polls, keyed by icao24.
+  // Each entry: { icao24, callsign, aircraftType, lastSeen, breachRecorded, positions: [{lat, lon, altMeters, onGround, inBoundary, timestamp}] }
+  const flightTrackerRef = useRef(new Map());
 
   const refreshCurrentHour = useCallback(async () => {
     try {
@@ -93,97 +96,158 @@ export default function useBreachDetection(isActive) {
       const hour = getCurrentHour();
       let newBreachCount = 0;
       const processedCallsigns = new Set();
+      const tracker = flightTrackerRef.current;
       console.debug(`[breach] Detection run — ${flights.length} flights to evaluate`);
 
+      // --- Phase 1: Update tracker with all flights from this poll ---
       for (const flight of flights) {
-        const cs = flight.callsign || 'UNKNOWN';
+        if (!flight.icao24) continue;
 
-        // Skip flights on the ground.
-        if (flight.onGround) {
-          console.debug(`[breach] ${cs}: skipped — on ground`);
-          continue;
-        }
-
-        // Must be inside the boundary.
-        if (!isWithinBoundary(flight.latitude, flight.longitude, boundary)) {
-          continue; // too noisy to log every out-of-boundary flight
-        }
-
-        // Convert altitude from meters to feet.
         const altMeters = flight.barometricAltitude ?? flight.geometricAltitude;
-        if (altMeters == null) {
-          console.debug(`[breach] ${cs}: skipped — no altitude data`);
+        const inBoundary = isWithinBoundary(flight.latitude, flight.longitude, boundary);
+
+        let entry = tracker.get(flight.icao24);
+        if (!entry) {
+          entry = {
+            icao24: flight.icao24,
+            callsign: flight.callsign,
+            aircraftType: flight.aircraftType,
+            lastSeen: now,
+            breachRecorded: false,
+            positions: [],
+          };
+          tracker.set(flight.icao24, entry);
+        }
+
+        // Update mutable fields (callsign can appear/change between polls).
+        entry.callsign = flight.callsign || entry.callsign;
+        entry.aircraftType = flight.aircraftType || entry.aircraftType;
+        entry.lastSeen = now;
+
+        // Append position (cap at TRACKER_MAX_POSITIONS).
+        entry.positions.push({
+          lat: flight.latitude,
+          lon: flight.longitude,
+          altMeters,
+          navQnh: flight.navQnh,
+          onGround: flight.onGround,
+          inBoundary,
+          velocity: flight.velocity,
+          heading: flight.trueTrack,
+          timestamp: now,
+        });
+        if (entry.positions.length > TRACKER_MAX_POSITIONS) {
+          entry.positions.shift();
+        }
+      }
+
+      // --- Phase 2: Evaluate breaches from tracked flights ---
+      // Re-read the current boundary to avoid evaluating against a stale value.
+      const currentBoundary = useConfigStore.getState().boundary;
+      for (const [, entry] of tracker) {
+        // Skip if already recorded a breach for this flight in this tracking session.
+        if (entry.breachRecorded) continue;
+
+        // Re-check each position against the current boundary (not the stored flag).
+        const inBoundaryPositions = entry.positions.filter(
+          (p) => !p.onGround && p.altMeters != null && isWithinBoundary(p.lat, p.lon, currentBoundary)
+        );
+        if (inBoundaryPositions.length === 0) continue;
+
+        // Find the lowest altitude among in-boundary positions.
+        let lowestPos = inBoundaryPositions[0];
+        for (let i = 1; i < inBoundaryPositions.length; i++) {
+          if (inBoundaryPositions[i].altMeters < lowestPos.altMeters) {
+            lowestPos = inBoundaryPositions[i];
+          }
+        }
+
+        const altFeet = lowestPos.altMeters * M_TO_FT;
+        const cs = entry.callsign || 'UNKNOWN';
+
+        // QNH-corrected altitude when available, fallback to raw barometric.
+        // Threshold is QFE-based (height above aerodrome), so when QNH is unavailable,
+        // compare baro altitude against threshold + airportElevation.
+        const correctedAltFt = calculateCorrectedAltitude(altFeet, lowestPos.navQnh);
+        const heightAboveAerodrome = calculateHeightAboveAerodrome(correctedAltFt, groundElevation);
+        const fallbackThreshold = altitudeThreshold + (groundElevation || 0);
+        const isBreach = heightAboveAerodrome != null
+          ? isBelowThreshold(heightAboveAerodrome, altitudeThreshold)
+          : isBelowThreshold(altFeet, fallbackThreshold);
+
+        if (!isBreach) {
+          const altLabel = heightAboveAerodrome != null
+            ? `${Math.round(heightAboveAerodrome)}ft QNH-corrected (baro ${Math.round(altFeet)}ft)`
+            : `${Math.round(altFeet)}ft (fallback threshold ${Math.round(fallbackThreshold)}ft)`;
+          console.debug(`[breach] ${cs}: tracked in boundary at ${altLabel} — above threshold (${altitudeThreshold}ft)`);
           continue;
         }
-        const altFeet = altMeters * M_TO_FT;
 
-        // Breach check is on barometric altitude directly (no QFE correction).
-        if (!isBelowThreshold(altFeet, altitudeThreshold)) {
-          console.debug(`[breach] ${cs}: in boundary at ${Math.round(altFeet)}ft — above threshold (${altitudeThreshold}ft)`);
-          continue;
-        }
-
-        // AGL stored for reference only.
         const agl = calculateAGL(altFeet, groundElevation);
-
-        console.debug(`[breach] ${cs}: BREACH CANDIDATE — ${Math.round(altFeet)}ft (threshold ${altitudeThreshold}ft)`);
-
-        // --- This flight is a breach candidate ---
+        if (heightAboveAerodrome != null) {
+          console.debug(`[breach] ${cs}: BREACH CANDIDATE — ${Math.round(heightAboveAerodrome)}ft above aerodrome (QNH ${lowestPos.navQnh}, baro ${Math.round(altFeet)}ft, threshold ${altitudeThreshold}ft), tracked ${entry.positions.length} positions`);
+        } else {
+          console.debug(`[breach] ${cs}: BREACH CANDIDATE — ${Math.round(altFeet)}ft (no QNH, threshold ${altitudeThreshold}ft), tracked ${entry.positions.length} positions`);
+        }
 
         // Duplicate prevention.
-        const dedupKey = buildDedupKey(flight.callsign);
+        const dedupKey = buildDedupKey(entry.callsign);
 
-        // Skip if already processed in this detection run (handles duplicate entries in a single API response).
         if (processedCallsigns.has(dedupKey)) {
           console.debug(`[breach] ${cs}: skipped — already processed this run`);
           continue;
         }
         processedCallsigns.add(dedupKey);
+
         try {
           const last = await getLastBreachForKey(dedupKey);
           if (last && (now - last.lastRecordedAt) < DUPLICATE_PREVENTION_WINDOW) {
             console.debug(`[breach] ${cs}: skipped — duplicate (last recorded ${Math.round((now - last.lastRecordedAt) / 1000)}s ago)`);
-            continue; // Already recorded recently.
+            entry.breachRecorded = true; // Don't re-evaluate until TTL expires and entry is pruned.
+            continue;
           }
         } catch {
           // If dedup lookup fails, still record the breach.
         }
 
-        // Build the breach record.
+        // Build the breach record using the lowest-altitude position.
         const breach = {
           timestamp: now,
           date,
           hour,
-          callsign: formatCallsign(flight.callsign),
+          callsign: formatCallsign(entry.callsign),
           altitude: Math.round(altFeet),
           agl: Math.round(agl),
-          latitude: flight.latitude,
-          longitude: flight.longitude,
-          velocity: flight.velocity,
-          heading: flight.trueTrack,
-          icao24: flight.icao24,
-          aircraftType: flight.aircraftType,
+          latitude: lowestPos.lat,
+          longitude: lowestPos.lon,
+          velocity: lowestPos.velocity,
+          heading: lowestPos.heading,
+          icao24: entry.icao24,
+          aircraftType: entry.aircraftType,
+          navQnh: lowestPos.navQnh ?? null,
+          correctedAltitude: correctedAltFt != null ? Math.round(correctedAltFt) : null,
+          heightAboveAerodrome: heightAboveAerodrome != null ? Math.round(heightAboveAerodrome) : null,
         };
 
         try {
           const saved = await addBreach(breach);
           addBreachToStore(saved);
-          await updateLastBreach(dedupKey, now, flight.latitude, flight.longitude);
+          await updateLastBreach(dedupKey, now, lowestPos.lat, lowestPos.lon);
           latestBreachRef.current = saved;
+          entry.breachRecorded = true;
           newBreachCount++;
-          console.debug(`[breach] ${cs}: RECORDED — ${Math.round(altFeet)}ft at ${flight.latitude?.toFixed(4)},${flight.longitude?.toFixed(4)}`);
+          console.debug(`[breach] ${cs}: RECORDED — ${Math.round(altFeet)}ft at ${lowestPos.lat?.toFixed(4)},${lowestPos.lon?.toFixed(4)}`);
 
-          // Notify callback if registered.
           if (onBreachRef.current) onBreachRef.current(saved);
 
           // Enrich with departure airport from FlightAware (skip for configured aircraft types).
           const skipTypes = skipAirportTypes
             ? skipAirportTypes.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
             : [];
-          const shouldSkip = flight.aircraftType && skipTypes.includes(flight.aircraftType.toUpperCase());
+          const shouldSkip = entry.aircraftType && skipTypes.includes(entry.aircraftType.toUpperCase());
           if (!shouldSkip) {
             try {
-              const origin = await fetchDepartureAirport(flight.callsign, flightAwareApiKey);
+              const origin = await fetchDepartureAirport(entry.callsign, flightAwareApiKey);
               if (origin) {
                 await updateBreachDepartureAirport(saved.id, origin);
                 updateBreachAirport(saved.id, origin);
@@ -194,6 +258,13 @@ export default function useBreachDetection(isActive) {
           }
         } catch (err) {
           console.error('Failed to record breach:', err);
+        }
+      }
+
+      // --- Phase 3: Prune stale tracker entries ---
+      for (const [key, entry] of tracker) {
+        if (now - entry.lastSeen > TRACKER_TTL) {
+          tracker.delete(key);
         }
       }
 

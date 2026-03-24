@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS breaches (
   icao24      TEXT,                               -- ICAO 24-bit hex address
   departure_airport TEXT,                         -- ICAO airport code from FlightAware
   aircraft_type     TEXT,                         -- ICAO type designator (e.g. P28A, C172)
+  nav_qnh               NUMERIC,                  -- QNH pressure setting in hPa
+  corrected_altitude    NUMERIC,                  -- QNH-corrected altitude AMSL in feet
+  height_above_aerodrome NUMERIC,                 -- height above aerodrome in feet
   reported    BOOLEAN NOT NULL DEFAULT FALSE,     -- noise complaint filed
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -49,3 +52,8 @@ ALTER TABLE last_breaches ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on breaches"      ON breaches      FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on config"        ON config        FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on last_breaches" ON last_breaches FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Migration: Add QNH altitude correction columns (run on existing installs)
+ALTER TABLE breaches ADD COLUMN IF NOT EXISTS nav_qnh NUMERIC;
+ALTER TABLE breaches ADD COLUMN IF NOT EXISTS corrected_altitude NUMERIC;
+ALTER TABLE breaches ADD COLUMN IF NOT EXISTS height_above_aerodrome NUMERIC;

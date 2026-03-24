@@ -29,31 +29,43 @@ function createHandleIcon() {
   });
 }
 
+/**
+ * Compute the Haversine distance between two lat/lon points in km.
+ */
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Compute a destination point given start, bearing (radians) and distance (km).
+ */
+function destinationPoint(lat, lon, bearingRad, distKm) {
+  const R = 6371;
+  const d = distKm / R;
+  const latRad = lat * Math.PI / 180;
+  const lonRad = lon * Math.PI / 180;
+  const newLat = Math.asin(
+    Math.sin(latRad) * Math.cos(d) + Math.cos(latRad) * Math.sin(d) * Math.cos(bearingRad)
+  );
+  const newLon = lonRad + Math.atan2(
+    Math.sin(bearingRad) * Math.sin(d) * Math.cos(latRad),
+    Math.cos(d) - Math.sin(latRad) * Math.sin(newLat)
+  );
+  return { lat: newLat * 180 / Math.PI, lon: newLon * 180 / Math.PI };
+}
+
 function EditableBoundary({ boundary, onBoundaryChange }) {
   const map = useMap();
-  const rectRef = useRef(null);
-  const markersRef = useRef([]);
+  const circleRef = useRef(null);
+  const markersRef = useRef({ center: null, edge: null });
   const debounceRef = useRef(null);
-
-  const updateHandles = useCallback((bounds) => {
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const positions = [
-      // corners: SW, NW, NE, SE
-      [sw.lat, sw.lng],
-      [ne.lat, sw.lng],
-      [ne.lat, ne.lng],
-      [sw.lat, ne.lng],
-      // edge midpoints: S, N, W, E
-      [(sw.lat + ne.lat) / 2, sw.lng],
-      [(sw.lat + ne.lat) / 2, ne.lng],
-      [sw.lat, (sw.lng + ne.lng) / 2],
-      [ne.lat, (sw.lng + ne.lng) / 2],
-    ];
-    markersRef.current.forEach((m, i) => {
-      m.setLatLng(positions[i]);
-    });
-  }, []);
 
   const persistBoundary = useCallback((newBoundary) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -62,92 +74,76 @@ function EditableBoundary({ boundary, onBoundaryChange }) {
     }, 500);
   }, []);
 
-  const handleDrag = useCallback((index) => {
-    return function () {
-      const pos = this.getLatLng();
-      const bounds = rectRef.current.getBounds();
-      let sw = bounds.getSouthWest();
-      let ne = bounds.getNorthEast();
-
-      // corners: 0=SW, 1=NW, 2=NE, 3=SE
-      // edges: 4=W, 5=E, 6=S, 7=N
-      switch (index) {
-        case 0: sw = L.latLng(pos.lat, pos.lng); break;
-        case 1: ne = L.latLng(pos.lat, ne.lng); sw = L.latLng(sw.lat, pos.lng); break;
-        case 2: ne = L.latLng(pos.lat, pos.lng); break;
-        case 3: sw = L.latLng(pos.lat, sw.lng); ne = L.latLng(ne.lat, pos.lng); break;
-        case 4: sw = L.latLng(sw.lat, pos.lng); break; // W edge
-        case 5: ne = L.latLng(ne.lat, pos.lng); break; // E edge
-        case 6: sw = L.latLng(pos.lat, sw.lng); break; // S edge
-        case 7: ne = L.latLng(pos.lat, ne.lng); break; // N edge
-      }
-
-      const newBounds = L.latLngBounds(sw, ne);
-      rectRef.current.setBounds(newBounds);
-      updateHandles(newBounds);
-
-      const newBoundary = {
-        latMin: Math.min(sw.lat, ne.lat),
-        latMax: Math.max(sw.lat, ne.lat),
-        lonMin: Math.min(sw.lng, ne.lng),
-        lonMax: Math.max(sw.lng, ne.lng),
-      };
-      onBoundaryChange(newBoundary);
-      persistBoundary(newBoundary);
-    };
-  }, [onBoundaryChange, persistBoundary, updateHandles]);
+  const updateEdgeHandle = useCallback((centerLat, centerLon, radiusKm) => {
+    // Place edge handle due east of center
+    const edge = destinationPoint(centerLat, centerLon, Math.PI / 2, radiusKm);
+    if (markersRef.current.edge) {
+      markersRef.current.edge.setLatLng([edge.lat, edge.lon]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!boundary) return;
 
-    const bounds = L.latLngBounds(
-      [boundary.latMin, boundary.lonMin],
-      [boundary.latMax, boundary.lonMax]
-    );
+    const { centerLat, centerLon, radiusKm } = boundary;
 
-    // Create rectangle
-    const rect = L.rectangle(bounds, BOUNDARY_STYLE).addTo(map);
-    rectRef.current = rect;
-
-    // Create 8 drag handles (4 corners + 4 edge midpoints)
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    const positions = [
-      [sw.lat, sw.lng],
-      [ne.lat, sw.lng],
-      [ne.lat, ne.lng],
-      [sw.lat, ne.lng],
-      [(sw.lat + ne.lat) / 2, sw.lng],
-      [(sw.lat + ne.lat) / 2, ne.lng],
-      [sw.lat, (sw.lng + ne.lng) / 2],
-      [ne.lat, (sw.lng + ne.lng) / 2],
-    ];
+    // Create circle
+    const circle = L.circle([centerLat, centerLon], {
+      radius: radiusKm * 1000,
+      ...BOUNDARY_STYLE,
+    }).addTo(map);
+    circleRef.current = circle;
 
     const icon = createHandleIcon();
-    const markers = positions.map((pos, i) => {
-      const marker = L.marker(pos, { icon, draggable: true }).addTo(map);
-      marker.on('drag', handleDrag(i));
-      return marker;
+
+    // Center drag handle
+    const centerMarker = L.marker([centerLat, centerLon], { icon, draggable: true }).addTo(map);
+    centerMarker.on('drag', function () {
+      const pos = this.getLatLng();
+      const currentRadius = circleRef.current.getRadius() / 1000; // meters -> km
+      circleRef.current.setLatLng(pos);
+      updateEdgeHandle(pos.lat, pos.lng, currentRadius);
+
+      const newBoundary = { centerLat: pos.lat, centerLon: pos.lng, radiusKm: currentRadius };
+      onBoundaryChange(newBoundary);
+      persistBoundary(newBoundary);
     });
-    markersRef.current = markers;
+
+    // Edge drag handle (due east)
+    const edgePos = destinationPoint(centerLat, centerLon, Math.PI / 2, radiusKm);
+    const edgeMarker = L.marker([edgePos.lat, edgePos.lon], { icon, draggable: true }).addTo(map);
+    edgeMarker.on('drag', function () {
+      const pos = this.getLatLng();
+      const center = circleRef.current.getLatLng();
+      const newRadiusKm = haversineKm(center.lat, center.lng, pos.lat, pos.lng);
+      circleRef.current.setRadius(newRadiusKm * 1000);
+
+      const newBoundary = { centerLat: center.lat, centerLon: center.lng, radiusKm: newRadiusKm };
+      onBoundaryChange(newBoundary);
+      persistBoundary(newBoundary);
+    });
+
+    markersRef.current = { center: centerMarker, edge: edgeMarker };
 
     return () => {
-      rect.remove();
-      markers.forEach((m) => m.remove());
+      circle.remove();
+      centerMarker.remove();
+      edgeMarker.remove();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, []); // Only run on mount — handles sync via the second useEffect
+  }, []); // Only run on mount — sync via second useEffect
 
-  // Sync rectangle when boundary changes externally (e.g. from config panel)
+  // Sync circle when boundary changes externally (e.g. from config panel)
   useEffect(() => {
-    if (!boundary || !rectRef.current) return;
-    const bounds = L.latLngBounds(
-      [boundary.latMin, boundary.lonMin],
-      [boundary.latMax, boundary.lonMax]
-    );
-    rectRef.current.setBounds(bounds);
-    updateHandles(bounds);
-  }, [boundary, updateHandles]);
+    if (!boundary || !circleRef.current) return;
+    const { centerLat, centerLon, radiusKm } = boundary;
+    circleRef.current.setLatLng([centerLat, centerLon]);
+    circleRef.current.setRadius(radiusKm * 1000);
+    if (markersRef.current.center) {
+      markersRef.current.center.setLatLng([centerLat, centerLon]);
+    }
+    updateEdgeHandle(centerLat, centerLon, radiusKm);
+  }, [boundary, updateEdgeHandle]);
 
   return null;
 }
@@ -156,10 +152,8 @@ function FitBoundary({ boundary, padding }) {
   const map = useMap();
   useEffect(() => {
     if (!boundary) return;
-    const bounds = L.latLngBounds(
-      [boundary.latMin, boundary.lonMin],
-      [boundary.latMax, boundary.lonMax]
-    );
+    const center = L.latLng(boundary.centerLat, boundary.centerLon);
+    const bounds = center.toBounds(boundary.radiusKm * 2000); // toBounds takes diameter in meters
     map.fitBounds(bounds, { padding: padding || [20, 20] });
   }, [map, boundary, padding]);
   return null;
@@ -206,10 +200,8 @@ function AlertMapFit({ lat, lng, boundary }) {
   useEffect(() => {
     if (lat == null || lng == null) return;
     if (boundary) {
-      const bounds = L.latLngBounds(
-        [boundary.latMin, boundary.lonMin],
-        [boundary.latMax, boundary.lonMax]
-      );
+      const center = L.latLng(boundary.centerLat, boundary.centerLon);
+      const bounds = center.toBounds(boundary.radiusKm * 2000);
       bounds.extend([lat, lng]);
       map.fitBounds(bounds, { padding: [15, 15] });
     } else {
@@ -219,20 +211,41 @@ function AlertMapFit({ lat, lng, boundary }) {
   return null;
 }
 
+/**
+ * Get the effective altitude for display/comparison.
+ * Uses QNH-corrected height above aerodrome when available, falls back to raw barometric.
+ */
+function getEffectiveAltitude(breach) {
+  if (breach.height_above_aerodrome != null) return breach.height_above_aerodrome;
+  return breach.altitude;
+}
+
 function buildReportMailto(breach, email, altitudeThreshold, emailTemplate) {
   const timestamp = format(new Date(breach.timestamp), 'd MMM yyyy HH:mm:ss');
-  const altitude = breach.altitude != null ? String(Math.round(breach.altitude)) : 'N/A';
-  const agl = breach.agl != null ? Math.round(breach.agl) : null;
-  const gap = agl != null && altitudeThreshold ? String(altitudeThreshold - agl) : 'N/A';
+  const effectiveAlt = getEffectiveAltitude(breach);
+  const altitude = effectiveAlt != null ? String(Math.round(effectiveAlt)) : 'N/A';
+  const gap = effectiveAlt != null && altitudeThreshold ? String(altitudeThreshold - Math.round(effectiveAlt)) : 'N/A';
   const callsign = formatCallsign(breach.callsign);
   const threshold = String(altitudeThreshold || 1300);
+  const coordinates = breach.latitude != null && breach.longitude != null
+    ? `${breach.latitude.toFixed(6)}, ${breach.longitude.toFixed(6)}`
+    : 'N/A';
+
+  const navQnh = breach.nav_qnh != null ? String(breach.nav_qnh.toFixed(1)) : 'N/A';
+  const correctedAltitude = breach.corrected_altitude != null ? String(Math.round(breach.corrected_altitude)) : 'N/A';
+  const heightAboveAerodrome = breach.height_above_aerodrome != null ? String(Math.round(breach.height_above_aerodrome)) : 'N/A';
 
   const body = emailTemplate
     .replace(/\[flight_number\]/g, callsign)
     .replace(/\[timestamp\]/g, timestamp)
     .replace(/\[threshold\]/g, threshold)
     .replace(/\[altitude\]/g, altitude)
-    .replace(/\[delta_altitude\]/g, gap);
+    .replace(/\[delta_altitude\]/g, gap)
+    .replace(/\[coordinates\]/g, coordinates)
+    .replace(/\[aircraft_type\]/g, breach.aircraft_type || 'N/A')
+    .replace(/\[nav_qnh\]/g, navQnh)
+    .replace(/\[corrected_altitude\]/g, correctedAltitude)
+    .replace(/\[height_above_aerodrome\]/g, heightAboveAerodrome);
 
   const subject = `Noise Complaint - Aircraft Below Restricted Altitude - ${callsign} - ${timestamp}`;
 
@@ -352,7 +365,31 @@ function AlertExplorer({ breach, boundary, onReportedChange, onDelete }) {
         </span>
         <div>
           <div className="alert-detail-value">{breach.altitude != null ? `${Math.round(breach.altitude).toLocaleString()} ft` : 'N/A'}</div>
-          <div className="alert-detail-label">Altitude</div>
+          <div className="alert-detail-label">Barometric altitude</div>
+        </div>
+      </div>
+      <div className="alert-detail-row">
+        <span className="alert-detail-icon">
+          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+        </span>
+        <div>
+          <div className="alert-detail-value">{breach.nav_qnh != null ? `${breach.nav_qnh.toFixed(1)} hPa` : 'N/A'}</div>
+          <div className="alert-detail-label">QNH</div>
+        </div>
+      </div>
+      <div className="alert-detail-row">
+        <span className="alert-detail-icon">
+          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15" />
+            <line x1="12" y1="9" x2="12" y2="21" />
+          </svg>
+        </span>
+        <div>
+          <div className="alert-detail-value">{breach.height_above_aerodrome != null ? `${Math.round(breach.height_above_aerodrome).toLocaleString()} ft` : 'N/A'}</div>
+          <div className="alert-detail-label">Corrected altitude</div>
         </div>
       </div>
       {!isReported && (
@@ -490,9 +527,10 @@ function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshol
           <tr>
             <th>Flight number</th>
             <th>Type</th>
-            <th>Coordinates</th>
             <th>Airport</th>
-            <th>Altitude, ft</th>
+            <th>Baro alt, ft</th>
+            <th>QNH, hPa</th>
+            <th>Corrected alt, ft</th>
             <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>
@@ -507,10 +545,11 @@ function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshol
             >
               <td>{formatCallsign(b.callsign)}</td>
               <td>{b.aircraft_type || 'N/A'}</td>
-              <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
               <td>{b.departure_airport || 'Unknown'}</td>
               <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
-              <td><SeverityDot agl={b.agl} threshold={altitudeThreshold} /></td>
+              <td>{b.nav_qnh != null ? b.nav_qnh.toFixed(1) : 'N/A'}</td>
+              <td>{b.height_above_aerodrome != null ? Math.round(b.height_above_aerodrome).toLocaleString() : 'N/A'}</td>
+              <td><SeverityDot altitude={b.altitude} heightAboveAerodrome={b.height_above_aerodrome} threshold={altitudeThreshold} /></td>
               <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
               <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
             </tr>
@@ -579,9 +618,10 @@ function MonthlyChart({ months }) {
   );
 }
 
-function SeverityDot({ agl, threshold }) {
-  if (agl == null || threshold == null) return null;
-  const gap = threshold - agl;
+function SeverityDot({ altitude, heightAboveAerodrome, threshold }) {
+  const effectiveAlt = heightAboveAerodrome != null ? heightAboveAerodrome : altitude;
+  if (effectiveAlt == null || threshold == null) return null;
+  const gap = threshold - effectiveAlt;
   let color;
   if (gap > 100) color = '#E53935';       // red
   else if (gap > 50) color = '#FB8C00';    // orange
@@ -667,9 +707,10 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
           <tr>
             <th>Flight number</th>
             <th>Type</th>
-            <th>Coordinates</th>
             <th>Airport</th>
-            <th>Altitude, ft</th>
+            <th>Baro alt, ft</th>
+            <th>QNH, hPa</th>
+            <th>Corrected alt, ft</th>
             <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>
@@ -681,7 +722,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
             const dateLabel = format(dateObj, 'd MMMM yyyy');
             return [
               <tr key={`header-${date}`} className="date-group-header">
-                <td colSpan={8}>{dateLabel}</td>
+                <td colSpan={9}>{dateLabel}</td>
               </tr>,
               ...grouped[date].map((b) => (
                 <tr
@@ -691,10 +732,11 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, reportedUpdat
                 >
                   <td>{formatCallsign(b.callsign)}</td>
                   <td>{b.aircraft_type || 'N/A'}</td>
-                  <td>{b.longitude != null && b.latitude != null ? `${b.longitude.toFixed(6)},${b.latitude.toFixed(6)}` : 'N/A'}</td>
                   <td>{b.departure_airport || 'Unknown'}</td>
                   <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
-                  <td><SeverityDot agl={b.agl} threshold={altitudeThreshold} /></td>
+                  <td>{b.nav_qnh != null ? b.nav_qnh.toFixed(1) : 'N/A'}</td>
+                  <td>{b.height_above_aerodrome != null ? Math.round(b.height_above_aerodrome).toLocaleString() : 'N/A'}</td>
+                  <td><SeverityDot altitude={b.altitude} heightAboveAerodrome={b.height_above_aerodrome} threshold={altitudeThreshold} /></td>
                   <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
                   <td>{b.reported ? <span className="reported-pill">Reported</span> : null}</td>
                 </tr>

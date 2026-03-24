@@ -372,6 +372,11 @@
   margin-top: 0;
 }
 
+.alert-detail-altitude + .alert-detail-row,
+.alert-detail-altitude + .alert-detail-row + .alert-detail-row {
+  margin-top: 16px;
+}
+
 .report-button {
   display: flex;
   align-items: center;
@@ -499,6 +504,19 @@
   background-color: rgba(113, 221, 140, 0.25);
   border-radius: 10px;
   line-height: 1.4;
+}
+
+.qnh-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #4a6fa5;
+  background-color: rgba(125, 187, 255, 0.25);
+  border-radius: 4px;
+  vertical-align: middle;
+  cursor: help;
 }
 
 /* Loading */
