@@ -12,10 +12,14 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (explicit exclusion)
+# Environment variables
 .env
+.env.*
 .env.local
 .env.*.local
+
+# Screenshots (may contain sensitive UI data)
+screenshots/
 
 # Editor directories and files
 .vscode/*

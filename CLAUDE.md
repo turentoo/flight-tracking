@@ -133,7 +133,7 @@ User configuration is stored in Supabase and editable via the Settings panel (ge
 - **Settings view**: "Monitoring boundary" (4 coordinate inputs in 2-column grid), "Flight parameters" (altitude threshold + airport code in row, skip airport types), "Monitoring hours" (start/end hour in row), "FlightAware API" (API key, password-masked), report email (full-width), "Edit email template" link, and "Save configuration" button.
 - **Email template view**: Clickable placeholder pills (`[flight_number]`, `[timestamp]`, `[threshold]`, `[altitude]`, `[delta_altitude]`, `[coordinates]`, `[aircraft_type]`, `[nav_qnh]`, `[corrected_altitude]`, `[height_above_aerodrome]`) that insert at cursor position, freetext textarea for the email body, "Back to settings" link. Template is persisted to Supabase and used by the Report button's `mailto:` link.
 
-Airport defaults to "EGTR" and is used as the label/filter value for the airport toggle on the monthly breaches table. FlightAware API key is stored in Supabase config (not env var) so each user provides their own via the UI. Report email defaults to `your@email.com`.
+Airport defaults to "EGTR" and is used as the label/filter value for the airport toggle on the monthly breaches table. FlightAware API key is stored in Supabase config (not env var) so each user provides their own via the UI. Report email is configured per user via the Settings UI.
 
 ## Supabase Database
 

@@ -38,27 +38,24 @@ export const DEFAULT_BOUNDARY = {
   radiusKm: 1.47,
 };
 
-// Default report email recipient
-export const DEFAULT_REPORT_EMAIL = 'your@email.com';
+// Default report email recipient (placeholder — set your own in Settings)
+export const DEFAULT_REPORT_EMAIL = '';
 
 // Radlett Aerodrome ICAO code (for elevation lookup)
 export const REFERENCE_AIRPORT_ICAO = 'EGTR';
 
-// Default email template for noise complaint reports
+// Default email template for noise complaint reports (placeholder — customise in Settings)
 export const DEFAULT_EMAIL_TEMPLATE = `Hello,
 
 I am writing to formally log a complaint regarding a flight [flight_number] operating out of your aerodrome at [timestamp].
 
-Based on data from flight tracking, the aircraft in question was flying over Radlett at an altitude of [altitude]ft, which is [delta_altitude]ft below the mandatory [threshold]ft requirement outlined in your noise abatement procedures for circuits to the north.
+Based on flight tracking data, the aircraft was flying at an altitude of [altitude]ft, which is [delta_altitude]ft below the mandatory [threshold]ft requirement outlined in the noise abatement procedures.
 
-This caused considerable noise disturbance at my property at your address.
+The aircraft type was [aircraft_type], with QNH [nav_qnh] hPa and corrected altitude [corrected_altitude]ft ([height_above_aerodrome]ft above aerodrome). Coordinates: [coordinates].
 
-Given that your previous response indicated confidence that procedures were being followed, I request a formal investigation into this specific flight to understand why it failed to adhere to the required altitude restriction.
+I request a formal investigation into this specific flight.
 
-I look forward to your response regarding this matter.
-Best wishes,
-Your Name
-your address`;
+Best wishes`;
 
 // Duplicate prevention window (ms) — 5 minutes, so repeat circuit breaches are captured
 export const DUPLICATE_PREVENTION_WINDOW = 300000;
