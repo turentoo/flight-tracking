@@ -299,7 +299,7 @@ $REMOTE_SCRIPT
 EOF
 
   echo -e "\n${GREEN}=== Remote Build Complete ===${NC}"
-  echo -e "${BLUE}Access the application at: https://flights.example.com${NC}"
+  echo -e "${BLUE}Access the application at: https://your-domain.example.com${NC}"
   exit 0
 fi
 
@@ -370,4 +370,4 @@ if [ "$DEPLOY" = true ]; then
 fi
 
 echo -e "\n${GREEN}=== Deployment Complete ===${NC}"
-echo -e "${BLUE}Access the application at: https://flights.example.com${NC}"
+echo -e "${BLUE}Access the application at: https://your-domain.example.com${NC}"

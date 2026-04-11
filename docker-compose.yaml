@@ -25,24 +25,18 @@ services:
       - VITE_DEFAULT_BOUNDARY_LAT_MAX=${VITE_DEFAULT_BOUNDARY_LAT_MAX:-51.692979}
       - VITE_DEFAULT_BOUNDARY_LON_MIN=${VITE_DEFAULT_BOUNDARY_LON_MIN:--0.351682}
       - VITE_DEFAULT_BOUNDARY_LON_MAX=${VITE_DEFAULT_BOUNDARY_LON_MAX:--0.277525}
-    labels:
-      # Enable Traefik
-      - "traefik.enable=true"
-
-      # HTTP router (redirect to HTTPS)
-      - "traefik.http.routers.flight-tracking-web.entrypoints=web"
-      - "traefik.http.routers.flight-tracking-web.rule=Host(`flights.example.com`)"
-      - "traefik.http.middlewares.flight-tracking-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.flight-tracking-web.middlewares=flight-tracking-redirect"
-
-      # HTTPS router
-      - "traefik.http.routers.flight-tracking-websecure.entrypoints=websecure"
-      - "traefik.http.routers.flight-tracking-websecure.rule=Host(`flights.example.com`)"
-      - "traefik.http.routers.flight-tracking-websecure.tls=true"
-      - "traefik.http.routers.flight-tracking-websecure.tls.certResolver=letsencrypt"
-
-      # Service configuration
-      - "traefik.http.services.flight-tracking-websecure.loadbalancer.server.port=80"
+    # Uncomment and configure the labels below if using Traefik reverse proxy:
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.flight-tracking-web.entrypoints=web"
+    #   - "traefik.http.routers.flight-tracking-web.rule=Host(`flights.example.com`)"
+    #   - "traefik.http.middlewares.flight-tracking-redirect.redirectscheme.scheme=https"
+    #   - "traefik.http.routers.flight-tracking-web.middlewares=flight-tracking-redirect"
+    #   - "traefik.http.routers.flight-tracking-websecure.entrypoints=websecure"
+    #   - "traefik.http.routers.flight-tracking-websecure.rule=Host(`flights.example.com`)"
+    #   - "traefik.http.routers.flight-tracking-websecure.tls=true"
+    #   - "traefik.http.routers.flight-tracking-websecure.tls.certResolver=letsencrypt"
+    #   - "traefik.http.services.flight-tracking-websecure.loadbalancer.server.port=80"
 
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/nginx-health"]
