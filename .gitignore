@@ -21,6 +21,9 @@ dist-ssr
 # Screenshots (may contain sensitive UI data)
 screenshots/
 
+# Private deployment docs (may contain infrastructure secrets)
+DOCKER_DEPLOYMENT.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
