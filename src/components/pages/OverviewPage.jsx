@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { useBreachStore } from '../../store/breachStore';
 import { useConfigStore } from '../../store/configStore';
 import { useUIStore } from '../../store/uiStore';
-import { getBreachesForMonth, getMonthlyStats, setBreachStatus, deleteBreach } from '../../services/storage/breachRepository';
+import { getBreachesForMonth, setBreachStatus, deleteBreach } from '../../services/storage/breachRepository';
 import { formatCallsign } from '../../utils/formatters';
 import { getBoundaryCenter } from '../../services/calculations/boundaryChecker';
 import EmptyState from '../shared/EmptyState';
@@ -533,114 +533,6 @@ function StatusFilter({ value, onChange }) {
   );
 }
 
-function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshold }) {
-  if (breaches.length === 0) {
-    return (
-      <div className="card breaches-table-card">
-        <h3 className="card-title">{title || 'Breaches'}</h3>
-        <EmptyState title="No breaches detected this hour" description="Altitude breaches will be listed here in real-time" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="card breaches-table-card">
-      <h3 className="card-title">{title || 'Breaches'}</h3>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Flight number</th>
-            <th>Type</th>
-            <th>Airport</th>
-            <th>Baro alt, ft</th>
-            <th>QNH, hPa</th>
-            <th>Height AGL, ft</th>
-            <th>Severity</th>
-            <th>Timestamp</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {breaches.map((b) => (
-            <tr
-              key={b.id}
-              className={`breach-row${selectedId === b.id ? ' breach-row-selected' : ''}`}
-              onClick={() => onSelect && onSelect(b)}
-            >
-              <td>{formatCallsign(b.callsign)}</td>
-              <td>{b.aircraft_type || 'N/A'}</td>
-              <td>{b.departure_airport || 'Unknown'}</td>
-              <td>{b.altitude != null ? Math.round(b.altitude).toLocaleString() : 'N/A'}</td>
-              <td>{b.nav_qnh != null ? b.nav_qnh.toFixed(1) : 'N/A'}</td>
-              <td>{b.height_above_aerodrome != null ? Math.round(b.height_above_aerodrome).toLocaleString() : 'N/A'}</td>
-              <td><SeverityDot altitude={b.altitude} heightAboveAerodrome={b.height_above_aerodrome} threshold={altitudeThreshold} /></td>
-              <td>{format(new Date(b.timestamp), 'd MMM yyyy HH:mm:ss')}</td>
-              <td><StatusPill status={b.status || 'new'} /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function StatCards({ stats }) {
-  const cards = [
-    { label: 'Avg per month', value: stats.avg, className: 'stat-card-blue' },
-    { label: 'Max per month', value: stats.max, className: 'stat-card-purple' },
-    { label: 'Total breaches', value: stats.total, className: 'stat-card-blue' },
-    { label: 'Min per month', value: stats.min, className: 'stat-card-purple' },
-  ];
-
-  return (
-    <div className="stat-cards">
-      {cards.map((c) => (
-        <div key={c.label} className={`stat-card ${c.className}`}>
-          <span className="stat-card-label">{c.label}</span>
-          <span className="stat-card-value">{c.value.toLocaleString()}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MonthlyChart({ months }) {
-  const hasData = months.some((m) => m.count > 0);
-  const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
-
-  // Build chart data with individual bar per month for colored bars
-  const chartData = months.map((m, i) => ({
-    name: m.label,
-    count: m.count,
-    fill: colors[i % colors.length],
-  }));
-
-  if (!hasData) {
-    return (
-      <div className="chart-container monthly-chart">
-        <EmptyState title="No historical data available" description="Breach statistics will appear after monitoring detects breaches" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="chart-container monthly-chart">
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={chartData} barSize={28}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-          <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--text-primary)' }} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-            {chartData.map((entry, index) => (
-              <rect key={index} fill={entry.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
 
 function SeverityDot({ altitude, heightAboveAerodrome, threshold }) {
   const effectiveAlt = heightAboveAerodrome != null ? heightAboveAerodrome : altitude;
@@ -661,7 +553,7 @@ function SeverityDot({ altitude, heightAboveAerodrome, threshold }) {
 
 const PAGE_SIZE = 20;
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates, airportFilter, altitudeThreshold, deletedIds, statusFilter, onStatusFilterChange, callsignFilter }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates, airportFilter, altitudeThreshold, deletedIds, statusFilter, onStatusFilterChange, callsignFilter, recentBreaches }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -678,8 +570,17 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates
     return () => { cancelled = true; };
   }, [year, month]);
 
+  // Merge recent breaches (from store) that may not yet be in the DB query result
+  const mergedBreaches = useMemo(() => {
+    if (!recentBreaches || recentBreaches.length === 0) return breaches;
+    const existingIds = new Set(breaches.map((b) => b.id));
+    const fresh = recentBreaches.filter((b) => !existingIds.has(b.id));
+    if (fresh.length === 0) return breaches;
+    return [...fresh, ...breaches];
+  }, [breaches, recentBreaches]);
+
   const displayBreaches = useMemo(() => {
-    let result = breaches;
+    let result = mergedBreaches;
     if (deletedIds && deletedIds.size > 0) {
       result = result.filter((b) => !deletedIds.has(b.id));
     }
@@ -809,7 +710,6 @@ export default function OverviewPage() {
   const boundary = useConfigStore((s) => s.boundary);
   const altitudeThreshold = useConfigStore((s) => s.altitudeThreshold);
   const airportFilter = useConfigStore((s) => s.airportFilter) || 'EGTR';
-  const [monthlyStats, setMonthlyStats] = useState({ months: [], avg: 0, max: 0, total: 0, min: 0 });
   const [selectedBreach, setSelectedBreach] = useState(null);
   const [statusUpdates, setStatusUpdates] = useState({});
   const [deletedIds, setDeletedIds] = useState(new Set());
@@ -820,11 +720,6 @@ export default function OverviewPage() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-
-  // Load 6-month stats
-  useEffect(() => {
-    getMonthlyStats(6).then(setMonthlyStats).catch(console.error);
-  }, [currentHourBreaches]); // refresh when new breaches come in
 
   const sorted = useMemo(
     () => [...currentHourBreaches].sort((a, b) => b.timestamp - a.timestamp),
@@ -843,20 +738,6 @@ export default function OverviewPage() {
       <div className="overview-layout">
         <div className="overview-main">
           <CurrentHourChart breaches={sorted} />
-          <BreachesTable
-            breaches={selectedBreach ? sorted.filter((b) => b.callsign === selectedBreach.callsign) : sorted}
-            selectedId={selectedBreach?.id}
-            onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
-            altitudeThreshold={altitudeThreshold}
-          />
-
-          <h2 className="section-heading past-heading">Past breaches</h2>
-
-          <div className="card past-breaches-card">
-            <h3 className="card-title">6 months overview</h3>
-            <StatCards stats={monthlyStats} />
-            <MonthlyChart months={monthlyStats.months} />
-          </div>
 
           <div className="month-selector">
             <select
@@ -902,6 +783,7 @@ export default function OverviewPage() {
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             callsignFilter={selectedBreach?.callsign || null}
+            recentBreaches={selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1 ? currentHourBreaches : null}
           />
         </div>
         <AlertExplorer
