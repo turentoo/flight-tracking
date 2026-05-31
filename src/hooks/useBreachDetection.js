@@ -168,7 +168,19 @@ export default function useBreachDetection(isActive) {
         // QNH-corrected altitude when available, fallback to raw barometric.
         // Threshold is QFE-based (height above aerodrome), so when QNH is unavailable,
         // compare baro altitude against threshold + airportElevation.
-        const correctedAltFt = calculateCorrectedAltitude(altFeet, lowestPos.navQnh);
+        // Use QNH from the lowest position first; if absent, find the most recent
+        // QNH from any position for this flight (ADSB.fi doesn't always include
+        // nav_qnh in every response).
+        let navQnh = lowestPos.navQnh;
+        if (navQnh == null) {
+          for (let i = entry.positions.length - 1; i >= 0; i--) {
+            if (entry.positions[i].navQnh != null) {
+              navQnh = entry.positions[i].navQnh;
+              break;
+            }
+          }
+        }
+        const correctedAltFt = calculateCorrectedAltitude(altFeet, navQnh);
         const heightAboveAerodrome = calculateHeightAboveAerodrome(correctedAltFt, groundElevation);
         const fallbackThreshold = altitudeThreshold + (groundElevation || 0);
         const isBreach = heightAboveAerodrome != null
@@ -224,7 +236,7 @@ export default function useBreachDetection(isActive) {
           heading: lowestPos.heading,
           icao24: entry.icao24,
           aircraftType: entry.aircraftType,
-          navQnh: lowestPos.navQnh ?? null,
+          navQnh: navQnh ?? null,
           correctedAltitude: correctedAltFt != null ? Math.round(correctedAltFt) : null,
           heightAboveAerodrome: heightAboveAerodrome != null ? Math.round(heightAboveAerodrome) : null,
         };
