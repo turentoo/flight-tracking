@@ -15,6 +15,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/flightaware-api/, '/aeroapi'),
       },
+      '/metar-api': {
+        target: 'https://aviationweather.gov',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/metar-api/, '/api/data/metar'),
+      },
     },
   },
   build: {

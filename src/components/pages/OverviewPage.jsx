@@ -395,7 +395,7 @@ function AlertExplorer({ breach, boundary, onStatusChange, onDelete }) {
         </span>
         <div>
           <div className="alert-detail-value">{breach.height_above_aerodrome != null ? `${Math.round(breach.height_above_aerodrome).toLocaleString()} ft` : 'N/A'}</div>
-          <div className="alert-detail-label">Corrected altitude</div>
+          <div className="alert-detail-label">Height above aerodrome</div>
         </div>
       </div>
       <div className="status-selector" role="group" aria-label="Breach status">
@@ -554,7 +554,7 @@ function BreachesTable({ breaches, title, selectedId, onSelect, altitudeThreshol
             <th>Airport</th>
             <th>Baro alt, ft</th>
             <th>QNH, hPa</th>
-            <th>Corrected alt, ft</th>
+            <th>Height AGL, ft</th>
             <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>
@@ -743,7 +743,7 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates
             <th>Airport</th>
             <th>Baro alt, ft</th>
             <th>QNH, hPa</th>
-            <th>Corrected alt, ft</th>
+            <th>Height AGL, ft</th>
             <th>Severity</th>
             <th>Timestamp</th>
             <th>Status</th>

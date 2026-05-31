@@ -6,6 +6,7 @@ import { calculateAGL, isBelowThreshold, calculateCorrectedAltitude, calculateHe
 import { isWithinBoundary } from '../services/calculations/boundaryChecker';
 import { addBreach, getLastBreachForKey, updateLastBreach, getRecentBreaches, updateBreachDepartureAirport } from '../services/storage/breachRepository';
 import { fetchDepartureAirport } from '../services/api/flightAwareClient';
+import { fetchRegionalQnh, getCachedQnh } from '../services/api/metarClient';
 import { formatCallsign } from '../utils/formatters';
 import { getCurrentDate, getCurrentHour } from '../utils/timeHelpers';
 import { DUPLICATE_PREVENTION_WINDOW, TRACKER_TTL, TRACKER_MAX_POSITIONS } from '../utils/constants';
@@ -72,6 +73,15 @@ export default function useBreachDetection(isActive) {
       console.error('Failed to refresh recent breaches:', err);
     }
   }, [setCurrentHourBreaches]);
+
+  // Fetch regional QNH from METAR on mount and every 30 minutes.
+  // Used as fallback when aircraft don't broadcast their own QNH.
+  useEffect(() => {
+    if (!isActive) return;
+    fetchRegionalQnh();
+    const id = setInterval(fetchRegionalQnh, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
 
   // Refresh current-hour breaches on mount and every minute
   // (handles the hour rolling over).
@@ -165,12 +175,8 @@ export default function useBreachDetection(isActive) {
         const altFeet = lowestPos.altMeters * M_TO_FT;
         const cs = entry.callsign || 'UNKNOWN';
 
-        // QNH-corrected altitude when available, fallback to raw barometric.
-        // Threshold is QFE-based (height above aerodrome), so when QNH is unavailable,
-        // compare baro altitude against threshold + airportElevation.
-        // Use QNH from the lowest position first; if absent, find the most recent
-        // QNH from any position for this flight (ADSB.fi doesn't always include
-        // nav_qnh in every response).
+        // QNH resolution: prefer aircraft's own QNH, then any recent position's
+        // QNH, then regional METAR QNH as final fallback.
         let navQnh = lowestPos.navQnh;
         if (navQnh == null) {
           for (let i = entry.positions.length - 1; i >= 0; i--) {
@@ -180,17 +186,19 @@ export default function useBreachDetection(isActive) {
             }
           }
         }
+        if (navQnh == null) {
+          navQnh = getCachedQnh();
+        }
         const correctedAltFt = calculateCorrectedAltitude(altFeet, navQnh);
         const heightAboveAerodrome = calculateHeightAboveAerodrome(correctedAltFt, groundElevation);
-        const fallbackThreshold = altitudeThreshold + (groundElevation || 0);
         const isBreach = heightAboveAerodrome != null
           ? isBelowThreshold(heightAboveAerodrome, altitudeThreshold)
-          : isBelowThreshold(altFeet, fallbackThreshold);
+          : isBelowThreshold(altFeet, altitudeThreshold + (groundElevation || 0));
 
         if (!isBreach) {
           const altLabel = heightAboveAerodrome != null
-            ? `${Math.round(heightAboveAerodrome)}ft QNH-corrected (baro ${Math.round(altFeet)}ft)`
-            : `${Math.round(altFeet)}ft (fallback threshold ${Math.round(fallbackThreshold)}ft)`;
+            ? `${Math.round(heightAboveAerodrome)}ft QNH-corrected (baro ${Math.round(altFeet)}ft, QNH ${navQnh})`
+            : `${Math.round(altFeet)}ft (no QNH available)`;
           console.debug(`[breach] ${cs}: tracked in boundary at ${altLabel} — above threshold (${altitudeThreshold}ft)`);
           continue;
         }
