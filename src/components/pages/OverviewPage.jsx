@@ -661,7 +661,7 @@ function SeverityDot({ altitude, heightAboveAerodrome, threshold }) {
 
 const PAGE_SIZE = 20;
 
-function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates, airportFilter, altitudeThreshold, deletedIds, statusFilter, onStatusFilterChange }) {
+function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates, airportFilter, altitudeThreshold, deletedIds, statusFilter, onStatusFilterChange, callsignFilter }) {
   const [breaches, setBreaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -694,8 +694,11 @@ function MonthlyBreachesTable({ year, month, selectedId, onSelect, statusUpdates
     if (statusFilter && statusFilter !== 'all') {
       result = result.filter((b) => (b.status || 'new') === statusFilter);
     }
+    if (callsignFilter) {
+      result = result.filter((b) => b.callsign === callsignFilter);
+    }
     return result;
-  }, [breaches, deletedIds, statusUpdates, airportFilter, statusFilter]);
+  }, [breaches, deletedIds, statusUpdates, airportFilter, statusFilter, callsignFilter]);
 
   // Reset to first page when filters or data change
   useEffect(() => { setPage(0); }, [displayBreaches]);
@@ -841,7 +844,7 @@ export default function OverviewPage() {
         <div className="overview-main">
           <CurrentHourChart breaches={sorted} />
           <BreachesTable
-            breaches={sorted}
+            breaches={selectedBreach ? sorted.filter((b) => b.callsign === selectedBreach.callsign) : sorted}
             selectedId={selectedBreach?.id}
             onSelect={(b) => setSelectedBreach(selectedBreach?.id === b.id ? null : b)}
             altitudeThreshold={altitudeThreshold}
@@ -898,6 +901,7 @@ export default function OverviewPage() {
             deletedIds={deletedIds}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
+            callsignFilter={selectedBreach?.callsign || null}
           />
         </div>
         <AlertExplorer
