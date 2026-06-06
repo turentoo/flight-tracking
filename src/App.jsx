@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useConfigStore } from './store/configStore';
 import { useUIStore } from './store/uiStore';
-import useTimeWindow from './hooks/useTimeWindow';
-import useFlightPolling from './hooks/useFlightPolling';
-import useBreachDetection from './hooks/useBreachDetection';
+import useRecentBreachesPolling from './hooks/useRecentBreachesPolling';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import OverviewPage from './components/pages/OverviewPage';
 import BreachHistoryPage from './components/pages/BreachHistoryPage';
-import BreachAlertBanner from './components/current/BreachAlertBanner';
 import ConfigPanel from './components/config/ConfigPanel';
 import { getAirportByICAO } from './services/api/ourAirportsClient';
 import { REFERENCE_AIRPORT_ICAO } from './utils/constants';
@@ -19,11 +16,9 @@ function App() {
   const { activePage, showConfigPanel, setShowConfigPanel } = useUIStore();
   const [appReady, setAppReady] = useState(false);
 
-  const { isActive } = useTimeWindow();
-  // Gate polling & detection on appReady so that the Supabase config
-  // (boundary, threshold, etc.) is loaded before any detection runs.
-  useFlightPolling(isActive && appReady);
-  const { onBreachRef } = useBreachDetection(isActive && appReady);
+  // Detection runs in the backend worker; the browser only displays data.
+  // Poll Supabase periodically to keep the "past 60 minutes" view fresh.
+  useRecentBreachesPolling(appReady);
 
   // Escape key closes config panel.
   useEffect(() => {
@@ -74,7 +69,6 @@ function App() {
 
   return (
     <div className="app">
-      <BreachAlertBanner onBreachRef={onBreachRef} />
       <Sidebar />
       <div className="main-area">
         <TopBar />

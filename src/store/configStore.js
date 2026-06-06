@@ -30,6 +30,7 @@ export const useConfigStore = create((set) => ({
   flightAwareApiKey: '',
   emailTemplate: DEFAULT_EMAIL_TEMPLATE,
   airportElevation: null,
+  monitoringEnabled: false,
   isLoading: false,
   error: null,
 
@@ -46,6 +47,7 @@ export const useConfigStore = create((set) => ({
       const skipAirportTypes = await getConfigValue('skipAirportTypes');
       const flightAwareApiKey = await getConfigValue('flightAwareApiKey');
       const emailTemplate = await getConfigValue('emailTemplate');
+      const monitoringEnabled = await getConfigValue('monitoringEnabled');
 
       // Migrate old rectangle boundary {latMin,latMax,lonMin,lonMax} → circle
       let resolvedBoundary = boundary || DEFAULT_BOUNDARY;
@@ -76,6 +78,7 @@ export const useConfigStore = create((set) => ({
         flightAwareApiKey: flightAwareApiKey || '',
         emailTemplate: emailTemplate || DEFAULT_EMAIL_TEMPLATE,
         airportElevation: airportElevation || null,
+        monitoringEnabled: monitoringEnabled === true,
         isLoading: false,
         error: null,
       });
@@ -161,6 +164,24 @@ export const useConfigStore = create((set) => ({
     try {
       await setConfigValue('airportElevation', elevation);
       set({ airportElevation: elevation, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  setMonitoringEnabled: async (enabled) => {
+    try {
+      await setConfigValue('monitoringEnabled', enabled);
+      set({ monitoringEnabled: enabled, error: null });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
+  refreshMonitoringEnabled: async () => {
+    try {
+      const monitoringEnabled = await getConfigValue('monitoringEnabled');
+      set({ monitoringEnabled: monitoringEnabled === true });
     } catch (error) {
       set({ error: error.message });
     }

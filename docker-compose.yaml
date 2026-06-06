@@ -44,3 +44,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # Autonomous worker — polls ADSB.fi and writes breaches to Supabase.
+  # Runs independently of any browser session. Reads monitoringEnabled
+  # from Supabase config every cycle and only fetches flights when true.
+  flight-tracking-backend:
+    image: flight-tracking-backend:local
+    container_name: flight-tracking-backend
+    restart: unless-stopped
+    environment:
+      # Supabase Configuration (REQUIRED — same project as the frontend)
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      # External APIs (optional)
+      - VITE_ADSB_FI_API_URL=${VITE_ADSB_FI_API_URL:-https://opendata.adsb.fi/api}
+      - VITE_FLIGHTAWARE_API_URL=${VITE_FLIGHTAWARE_API_URL:-https://aeroapi.flightaware.com/aeroapi}
+      - VITE_METAR_API_URL=${VITE_METAR_API_URL:-https://aviationweather.gov/api/data/metar}
+      # Polling cadence (ms)
+      - VITE_POLLING_INTERVAL=${VITE_POLLING_INTERVAL:-30000}
+      - VITE_ACTIVE_POLLING_INTERVAL=${VITE_ACTIVE_POLLING_INTERVAL:-20000}
+      # Fallbacks if config table is empty
+      - VITE_ALTITUDE_THRESHOLD=${VITE_ALTITUDE_THRESHOLD:-1300}
+      - VITE_ACTIVE_HOURS_START=${VITE_ACTIVE_HOURS_START:-9}
+      - VITE_ACTIVE_HOURS_END=${VITE_ACTIVE_HOURS_END:-19}

@@ -61,3 +61,10 @@ ALTER TABLE breaches ADD COLUMN IF NOT EXISTS height_above_aerodrome NUMERIC;
 -- 6. Migration: Replace reported boolean with status text (run on existing installs)
 ALTER TABLE breaches ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
 UPDATE breaches SET status = CASE WHEN reported = true THEN 'reported' ELSE 'new' END WHERE status = 'new' AND reported = true;
+
+-- 7. Seed: default monitoring state to OFF.
+--    The backend worker polls this flag every cycle and only fetches flights
+--    when it is true. The UI exposes a toggle to flip it.
+INSERT INTO config (key, value, updated_at)
+VALUES ('monitoringEnabled', 'false'::jsonb, (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT)
+ON CONFLICT (key) DO NOTHING;
